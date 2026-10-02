@@ -1,0 +1,25 @@
+{
+  "name": "record-crate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A beautiful local browser for a Discogs record collection",
+  "scripts": {
+    "dev": "node server/index.js",
+    "build": "vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "test": "node test/classify.test.mjs && node test/shelfmap.test.mjs && node test/identify.test.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}
