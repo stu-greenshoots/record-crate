@@ -5,13 +5,14 @@
   "type": "module",
   "description": "A beautiful local browser for a Discogs record collection",
   "scripts": {
-    "dev": "vite --config vite.app.config.ts",
-    "build": "tsc --noEmit -p . && vite build --config vite.app.config.ts",
+    "dev": "node scripts/copy-ort.mjs && vite --config vite.app.config.ts",
+    "build": "node scripts/copy-ort.mjs && tsc --noEmit -p . && vite build --config vite.app.config.ts",
     "preview": "vite preview --config vite.app.config.ts",
     "snapshot": "node scripts/export.mjs && node scripts/embed.mjs",
     "server": "node server/index.js",
     "start": "NODE_ENV=production node server/index.js",
-    "test": "node test/classify.test.mjs && node test/shelfmap.test.mjs && node test/identify.test.mjs"
+    "test": "node test/classify.test.mjs && node test/shelfmap.test.mjs && node test/identify.test.mjs",
+    "deploy": "sh scripts/deploy.sh"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",

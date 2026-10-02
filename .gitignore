@@ -10,3 +10,4 @@ identify/**/__pycache__/
 __pycache__/
 dist-app/
 app/__test/
+public/ort/

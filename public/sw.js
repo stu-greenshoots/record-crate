@@ -74,7 +74,7 @@ self.addEventListener('fetch', (event) => {
       return event.respondWith(networkFirst(request))
     }
     if (path.startsWith('data/')) return event.respondWith(staleWhileRevalidate(request))
-    if (/^(covers|models|assets)\//.test(path) || /\.(png|svg)$/.test(path)) {
+    if (/^(covers|models|assets|ort)\//.test(path) || /\.(png|svg)$/.test(path)) {
       return event.respondWith(cacheFirst(request))
     }
     return

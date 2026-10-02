@@ -1577,6 +1577,16 @@ img {
   cursor: pointer;
 }
 
+.scan-top .torch {
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.scan-top .torch.on {
+  background: var(--amber);
+  color: #1d1306;
+}
+
 .scan-bottom {
   position: absolute;
   left: 0;
@@ -1702,5 +1712,15 @@ img {
 @media (min-width: 700px) {
   .where-label {
     font-size: 52px;
+  }
+
+  .tabbar {
+    left: 50%;
+    right: auto;
+    width: 600px;
+    transform: translateX(-50%);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
   }
 }

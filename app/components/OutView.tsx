@@ -46,6 +46,23 @@ export function OutView() {
   groups.forEach((g) => (badges[g.cube] = g.recs.length))
   const marked = new Set(out.map((r) => r.id))
 
+  /**
+   * The nearest record still on the shelf to slot it next to. A neighbour that's
+   * itself out is no use as a landmark, so step past it.
+   */
+  const shelfHint = (id: number) => {
+    const spot = spots.get(id)
+    if (!spot) return ''
+    const ids = spot.cube.instanceIds
+    for (let i = spot.index - 1; i >= 0; i--) {
+      if (!marked.has(ids[i])) return `after ${byId.get(ids[i])?.title}`
+    }
+    for (let i = spot.index + 1; i < ids.length; i++) {
+      if (!marked.has(ids[i])) return `first in the cube, before ${byId.get(ids[i])?.title}`
+    }
+    return 'the cube is empty'
+  }
+
   const back = (r: Rec) => {
     putBack(r.id)
     toast(`${r.title} — back in`, { undo: () => takeOut(r.id) })
@@ -94,7 +111,7 @@ export function OutView() {
             </h2>
             <ul className="out-list">
               {g.recs.map((r) => {
-                const spot = spots.get(r.id)
+                const hint = shelfHint(r.id)
                 return (
                   <li key={r.id} className="out-item">
                     <button type="button" className="out-main" onClick={() => go(`r/${r.id}`)}>
@@ -102,13 +119,7 @@ export function OutView() {
                       <span className="result-text">
                         <span className="result-title">{r.title}</span>
                         <span className="result-artist">{r.artist}</span>
-                        <span className="out-hint">
-                          {spot?.before
-                            ? `after ${spot.before.title}`
-                            : spot?.after
-                              ? `first, before ${spot.after.title}`
-                              : ''}
-                        </span>
+                        <span className="out-hint">{hint}</span>
                       </span>
                     </button>
                     <button type="button" className="tick" onClick={() => back(r)} aria-label={`${r.title} is back`}>

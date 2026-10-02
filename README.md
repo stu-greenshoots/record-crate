@@ -1,132 +1,109 @@
 # Record Crate
 
-A local browser for a Discogs record collection. Signs in with Discogs OAuth, pulls
-your collection down to disk, files it the way a person would file it, and lets you
-flick through it like a real crate.
+**Where does this record go?** A phone app for keeping a vinyl collection in order.
+Point the camera at a sleeve, or type a few letters, and it shows the cube, which
+row and how far along, and the two records to slide it between. Take a record out
+to play it and it waits in **Put back**, which then walks you round the unit in
+order.
+
+It's a static site — the collection is baked in, the sleeve recogniser runs on the
+phone, and nothing needs a server. Add it to the home screen and it works offline.
+
+## Using it
+
+- **Find** — type an artist, album or catalogue number (`zep`, `k 50014`), or tap
+  *Point at a sleeve* and fill the square with the front cover. When it's sure, it
+  jumps straight to the record; when it isn't, tap the right one from the four
+  best guesses.
+- **The record page** — the big label is the cube (`K – M`), then where that cube
+  is ("Middle row, 2nd from left"), a close-up of the cube with the record's slot
+  lit, and the records either side of it. *Taking it out* puts it on the Put back
+  list.
+- **Put back** — everything that's out, grouped by cube in walking order, each
+  with the nearest record still on the shelf to slot it next to. Tick them off.
+- **Unit** — the whole unit drawn as spines coloured from the sleeves. Open a cube
+  for its records in shelf order, with a checklist for sorting the real shelf to
+  match. *Settings* (the cog) changes the unit's size, cube capacity and what each
+  cube holds, and checks Discogs for records bought since the snapshot.
+
+What you do on the phone — what's out, ticks, layout changes — is saved on that
+phone.
+
+## How the camera works
+
+The recogniser is [DINOv2-small](https://huggingface.co/Xenova/dinov2-small)
+running in a web worker through transformers.js (ONNX Runtime, WebAssembly). Every
+cover in the collection is embedded ahead of time (`public/data/embeddings.bin`,
+466KB); a camera frame is embedded on the phone and compared with all of them.
+The first scan downloads the model and runtime (~38MB) once; after that it's
+cached.
+
+Measured on synthetic phone photos of 60 of the real sleeves
+(`identify/tests/phone_photos.py` + `bench_embed.mjs`):
+
+| condition | right first time | in the top 5 |
+| --- | --- | --- |
+| straight on | 60/60 | 60/60 |
+| moderate angle | 59/60 | 60/60 |
+| angle + lamp glare | 57/60 | 60/60 |
+| glare + soft focus | 58/60 | 59/60 |
+| loosely framed, on a cluttered shelf | 59/60 | 60/60 |
+| loosely framed, dim warm light, soft | 49/60 | 56/60 |
+
+CLIP ViT-B/32 was clearly worse (26–60/60). The scanner only jumps to an answer
+on its own when the top score is ≥ 0.68 *and* it leads the runner-up by ≥ 0.07
+(or ≥ 0.06 on two frames running): across those photos plus 60 things that
+aren't sleeves, that accepted 84% of right answers and nothing wrong. The rest
+are one tap away. These are synthetic photos — real ones will differ.
+
+Pressing doesn't matter for placement: where a record goes depends on the
+artist's filing name and the year the album first came out, which are the same
+for every pressing. So recognising the album from its cover is enough.
+
+## Refreshing the snapshot
+
+The app's data comes from the local Discogs mirror in `data/` (gitignored —
+collection, artists, master years and cached covers, pulled by the original
+desktop app in `server/` + `src/`).
+
+```bash
+npm run snapshot   # data/ -> public/data/collection.json, covers, embeddings, model
+git commit -am "New snapshot" && git push   # GitHub Actions rebuilds the site
+```
+
+Between snapshots, *Settings → Check Discogs for new records* files new purchases
+on the phone using the same rules (the public collection API needs no login). The
+camera learns their sleeves at the next snapshot.
+
+## Development
 
 ```bash
 npm install
-npm run dev      # http://localhost:5177
+npm run dev        # http://localhost:5178 — the phone app
+npm test           # filing rules, shelf layout, catalogue-number matching
+npm run build      # -> dist-app/
 ```
 
-Then hit **Connect Discogs**. Nothing leaves your machine except calls to the Discogs API.
-
-## How it files things
-
-Records sort under a *filed-as* name, not the raw artist string:
-
-| Artist | Filed as |
-| --- | --- |
-| Bob Dylan | Dylan, Bob |
-| The Beatles | Beatles, The |
-| Ludwig van Beethoven | Beethoven, Ludwig van |
-| Fleetwood Mac | Fleetwood Mac |
-| Various | Various Artists |
-
-Working out whether an artist is a person or a band happens in three passes of
-increasing confidence:
-
-1. **Name shape** — instant, for every record. Two title-case words is probably a
-   person; a leading article, an ampersand, or a word like "Orchestra" is a band.
-2. **Discogs** — the background crawl fetches each artist. A `members` list means a
-   group; a `realname` means a person. This corrects the guesses (Fleetwood Mac,
-   Pink Floyd, Public Enemy) within a few minutes of the first sync.
-3. **Your override** — always wins, and applies to every record by that artist.
-
-The **Filing** tab lists every artist with the source of its filing, so guesses can be
-audited in one pass. Anything still marked *best guess* is worth a glance.
-
-`npm test` exercises the filing and shelf rules.
-
-## Shelves
-
-New records are auto-sorted onto shelves, most specific first: **Singles** (7"s and
-maxi-singles) → **Screen & Play** (soundtracks, scores, game music) → **Compilations**
-→ **Heavy Rotation** (metal styles) → **Main Shelf**.
-
-Shelves are yours to change — rename by double-clicking, add with **+**, drag records
-between them, or move a record from its detail panel. Re-running the auto-sort
-(`POST /api/shelves/reclassify`) only touches records you haven't moved by hand.
-
-## Order
-
-The sort selector offers filed-as, artist-as-written, title, year, recently added and
-market value. Drag any record in the shelf view and the current order is frozen into
-**My own order**, which is then yours to rearrange freely.
-
-## Views
-
-- **Grid** — gallery with alphabetical run-in dividers, drag to reorder or re-shelve.
-- **Crate** — coverflow. Arrow keys, scroll, or drag to flick; A–Z rail to jump; Enter opens.
-- **Shelf** — the physical unit (see below).
-- **Filing** — the sort-name audit table.
-
-## Filing a record from a photo
-
-*File a record* answers "where does this go?" for something in your hands.
-
-Photograph the **front** and it matches against the sleeves you already own.
-Photograph the **back** and it reads the sleeve: the catalogue number printed
-there names one specific pressing, and it comes back with the pressings on
-Discogs that carry it, so you pick the one you're holding. Either way you end up
-with the cube and the two records to slide between — and it says so if you
-already own it.
-
-Fill the frame with the sleeve. A catalogue number is set in about 7pt, so it
-needs roughly 1700px across the sleeve to be legible; below that the app tells
-you the photo was too small rather than guessing.
-
-## The unit
-
-The **Shelf** view draws your actual furniture: a grid of cubes with every record
-standing in it as a spine, coloured by averaging its sleeve art.
-
-Cubes are either part of the **alphabetical run** — showing a letter range like
-"C – E" — or hold named shelves. The default is a 4-wide, 3-tall unit: nine cubes of
-alphabet running left to right, then Heavy Rotation, Screen & Play, and
-Compilations + Singles filling out the bottom row. Change the dimensions, capacity,
-or what any cube holds by clicking its label.
-
-The unit is sized from the space available so the whole thing is visible at once,
-down to a floor below which the spines stop being hoverable.
-
-The letter ranges aren't fixed at 26/n. They're solved for: a dynamic program splits
-the alphabet into consecutive runs minimising squared deviation from the average
-load, with a steep penalty for exceeding a cube's capacity. Minimising the *largest*
-cube — the usual approach — happily leaves one cube at 14 and another at 50 as long
-as the peak is optimal; evening the loads is what makes a shelf look right. Ranges
-shift as the collection grows.
-
-Spine width comes from the cube's capacity rather than its contents, so a half-full
-cube reads as half full, and the trailing records lean the way real ones do. Cubes
-past capacity are flagged, as are records with nowhere to live. Searching highlights
-matching spines in place, and any record's detail panel tells you which cube it
-stands in.
-
-Opening a record shows the sleeve (click to flip to the back scan), tracklist, credits,
-notes, pressing details, community have/want, and what it's currently going for on the
-marketplace.
-
-## Layout
-
 ```
-server/
-  config.js     credentials + paths (reads the tab-separated .env as-is)
-  discogs.js    OAuth 1.0a (PLAINTEXT) + rate-limited API client
-  store.js      JSON persistence with atomic writes
-  classify.js   filing rules and shelf auto-sort
-  sync.js       collection pull
-  enrich.js     background crawl for sleeves, artists and prices
-  records.js    the shape the UI renders, plus sort modes
-  routes.js     HTTP API
-src/            React + TypeScript front end
-data/           your collection, shelves and cached art (gitignored)
+app/          the phone app (React + TypeScript)
+  store.ts      snapshot + on-phone state, where every record stands
+  search.ts     type-to-find
+  recognise*.ts the sleeve recogniser and its worker
+  discogs.ts    catching up with new purchases from the phone
+shared/       filing rules, shelf width/height, the unit layout solver — used by
+              both the app and the scripts
+scripts/      export.mjs (snapshot), embed.mjs (recognition index), copy-ort.mjs
+public/       the snapshot, covers, model and service worker
+server/, src/ the original desktop app and Discogs sync (see HANDOVER.md)
+identify/     recognition experiments and measurements
 ```
 
-Discogs allows 60 requests/minute, so the client runs a token bucket a little under
-that with a two-level queue — anything you're waiting on overtakes the background
-crawl. After the first sync, sleeves and artist identities fill in over a few minutes.
+## Filing, briefly
 
-Collection value is opt-in (one marketplace call per release) via the sidebar button,
-and is the sum of the **lowest currently listed** price, so it reads as a floor rather
-than an appraisal. Set `DISCOGS_CURRENCY` to change from GBP.
+Records file under a library-style sort name (`Dylan, Bob`, `Beatles, The`,
+`Beethoven, Ludwig van`), using Discogs' own person/band data and the artist's
+canonical name. Within an artist, by the year the album first came out. Cubes in
+the A–Z run are balanced by shelf *width* (a gatefold double takes two slots),
+breaking mid-letter when that evens things out. Named shelves — Heavy Rotation,
+Screen & Play, Compilations, Singles — get their own cubes. See HANDOVER.md for
+the reasoning and the bugs that shaped it.

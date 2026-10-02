@@ -57,13 +57,25 @@ export function warmUp() {
   worker.postMessage({ type: 'init', base: new URL(import.meta.env.BASE_URL, location.href).href })
 }
 
-export function recognise(image: ImageData): Promise<Result> {
+export type View = 'full' | 'centre' | 'both'
+
+/**
+ * Fold two answers into one, each record keeping its better score — the two halves
+ * of an alternating full/centre scan.
+ */
+export function merge(a: Match[], b: Match[]): Match[] {
+  const best = new Map<number, number>()
+  for (const m of [...a, ...b]) best.set(m.releaseId, Math.max(best.get(m.releaseId) ?? -1, m.score))
+  return [...best].map(([releaseId, score]) => ({ releaseId, score })).sort((x, y) => y.score - x.score)
+}
+
+export function recognise(image: ImageData, view: View = 'both'): Promise<Result> {
   warmUp()
   const id = ++seq
   return new Promise((resolve) => {
     pending.set(id, resolve)
     worker!.postMessage(
-      { type: 'frame', id, width: image.width, height: image.height, data: image.data.buffer },
+      { type: 'frame', id, view, width: image.width, height: image.height, data: image.data.buffer },
       [image.data.buffer],
     )
   })

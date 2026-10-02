@@ -85,3 +85,11 @@ export const ImageIcon = () => (
     <path d="m20.5 16-5-5-8 8.5" />
   </svg>
 )
+
+export const TorchIcon = () => (
+  <svg {...base}>
+    <path d="M8 3h8l-1 5H9z" />
+    <path d="M9 8h6v12a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z" />
+    <path d="M12 12v3" />
+  </svg>
+)

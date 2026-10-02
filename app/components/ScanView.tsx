@@ -1,22 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { back, go } from '../route'
-import { onRecogniser, recognise, warmUp, type Match, type RecogniserState } from '../recognise'
+import { merge, onRecogniser, recognise, warmUp, type Match, type RecogniserState } from '../recognise'
 import type { Rec } from '../types'
 import { Sleeve } from './Sleeve'
-import { CloseIcon, ImageIcon } from './Icons'
+import { CloseIcon, ImageIcon, TorchIcon } from './Icons'
 
 /** Side of the square handed to the recogniser; the model works at 224. */
 const SAMPLE = 320
 
 /**
- * When to trust the top match without asking. Measured on 360 synthetic phone
- * photos: no wrong answer ever led by more than 0.067, while 316 of 342 right
- * answers led by at least 0.07. A lead of 0.06 on two frames running is also
- * accepted — a coincidental match doesn't hold still from frame to frame.
+ * When to trust the top match without asking, measured on 360 synthetic phone
+ * photos of real sleeves plus 60 things that aren't sleeves (shelf backgrounds,
+ * collages of other covers, plain card):
+ *
+ *  - no wrong sleeve ever led the runner-up by more than 0.067;
+ *  - non-sleeves could lead by 0.10, but never scored above 0.67 outright;
+ *  - so: score at least FLOOR and lead by SURE, or by STEADY on two frames running.
+ *
+ * That accepts 286 of 342 right answers on sight with no wrong ones; the rest are a
+ * tap away in the shortlist.
  */
-const SURE = 0.1
+const FLOOR = 0.68
+const SURE = 0.07
 const STEADY = 0.06
+/** Below this the frame probably isn't one of your sleeves at all. */
+const STRANGER = 0.6
 
 type Found = { rec: Rec; score: number }
 
@@ -29,6 +38,19 @@ export function ScanView() {
   const [guesses, setGuesses] = useState<Found[]>([])
   const [frames, setFrames] = useState(0)
   const [busyPhoto, setBusyPhoto] = useState(false)
+  const [stranger, setStranger] = useState(false)
+  const [torch, setTorch] = useState<{ track: MediaStreamTrack; on: boolean } | null>(null)
+
+  const toggleTorch = async () => {
+    if (!torch) return
+    const on = !torch.on
+    try {
+      await torch.track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] })
+      setTorch({ ...torch, on })
+    } catch {
+      setTorch(null)
+    }
+  }
   const done = useRef(false)
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight })
 
@@ -70,6 +92,9 @@ export function ScanView() {
         v.srcObject = s
         await v.play().catch(() => {})
         setCamera('live')
+        const track = s.getVideoTracks()[0]
+        const caps = (track.getCapabilities?.() || {}) as MediaTrackCapabilities & { torch?: boolean }
+        if (caps.torch) setTorch({ track, on: false })
       })
       .catch(() => setCamera('denied'))
     return () => {
@@ -95,6 +120,8 @@ export function ScanView() {
     if (camera !== 'live' || model.status !== 'ready') return
     let live = true
     let lastTop: number | null = null
+    let previous: Match[] = []
+    let n = 0
     ;(async () => {
       while (live && !done.current) {
         const frame = grabSquare(video.current!, canvas.current!)
@@ -102,15 +129,18 @@ export function ScanView() {
           await new Promise((r) => setTimeout(r, 120))
           continue
         }
-        const { matches } = await recognise(frame)
+        // Alternate the two views and judge on this frame plus the last.
+        const { matches } = await recognise(frame, n++ % 2 ? 'centre' : 'full')
         if (!live) return
-        const found = toFound(matches)
+        const found = toFound(merge(matches, previous))
+        previous = matches
         setFrames((n) => n + 1)
         setGuesses(found.slice(0, 4))
         if (found.length > 1) {
           const lead = found[0].score - found[1].score
           const top = found[0].rec.releaseId
-          if (lead >= SURE || (lead >= STEADY && lastTop === top)) {
+          setStranger(found[0].score < STRANGER)
+          if (found[0].score >= FLOOR && (lead >= SURE || (lead >= STEADY && lastTop === top))) {
             accept(found[0].rec)
             return
           }
@@ -138,7 +168,9 @@ export function ScanView() {
       const found = toFound(matches)
       setGuesses(found.slice(0, 4))
       setFrames((n) => n + 1)
-      if (found.length > 1 && found[0].score - found[1].score >= SURE) accept(found[0].rec)
+      if (found.length > 1 && found[0].score >= FLOOR && found[0].score - found[1].score >= SURE) {
+        accept(found[0].rec)
+      }
     } finally {
       setBusyPhoto(false)
     }
@@ -155,6 +187,7 @@ export function ScanView() {
     }
     if (camera === 'starting') return 'Starting the camera…'
     if (frames < 3) return 'Fill the square with the front of the sleeve'
+    if (stranger) return "Not sure that's one of yours — fill the square with the sleeve"
     return 'Hold it steady — or tap the one it is'
   })()
 
@@ -181,6 +214,17 @@ export function ScanView() {
         <button type="button" className="icon-btn glass" onClick={() => back()} aria-label="Close">
           <CloseIcon />
         </button>
+        {torch && (
+          <button
+            type="button"
+            className={`icon-btn glass torch ${torch.on ? 'on' : ''}`}
+            onClick={toggleTorch}
+            aria-label={torch.on ? 'Light off' : 'Light on'}
+            aria-pressed={torch.on}
+          >
+            <TorchIcon />
+          </button>
+        )}
         <label className="icon-btn glass" aria-label="Use a photo">
           <ImageIcon />
           <input
@@ -230,7 +274,7 @@ export function ScanView() {
  * with object-fit: cover, so screen coordinates have to be mapped back through the
  * crop and scale to find the same square in the camera's own pixels.
  */
-function grabSquare(v: HTMLVideoElement, c: HTMLCanvasElement): ImageData | null {
+export function grabSquare(v: HTMLVideoElement, c: HTMLCanvasElement): ImageData | null {
   if (!v.videoWidth || v.readyState < 2) return null
   const vw = v.videoWidth
   const vh = v.videoHeight

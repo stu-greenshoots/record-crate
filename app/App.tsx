@@ -1,3 +1,4 @@
+import { Component, type ReactNode } from 'react'
 import { useStore } from './store'
 import { go, useRoute } from './route'
 import { FindView } from './components/FindView'
@@ -9,7 +10,42 @@ import { SettingsView } from './components/SettingsView'
 import { Toaster } from './components/Toast'
 import { ReturnIcon, SearchIcon, UnitIcon } from './components/Icons'
 
+/** If a screen throws, offer a way back rather than a blank page. */
+class Boundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div className="page empty-state">
+        <p>Something went wrong.</p>
+        <p className="empty-sub">{String(this.state.error.message || this.state.error)}</p>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => {
+            location.hash = '#/'
+            location.reload()
+          }}
+        >
+          Start again
+        </button>
+      </div>
+    )
+  }
+}
+
 export default function App() {
+  return (
+    <Boundary>
+      <Screens />
+    </Boundary>
+  )
+}
+
+function Screens() {
   const route = useRoute()
   const store = useStore()
 

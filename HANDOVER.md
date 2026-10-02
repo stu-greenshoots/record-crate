@@ -1,5 +1,25 @@
 # Handover — Record Crate
 
+## October 2026: the phone app (start here)
+
+The project is now a **static phone web app** in `app/`, meant for GitHub Pages at
+`/record-crate/`. It covers only records Stu owns: find one (typing or camera), see
+where it goes, keep a put-back list, and sort the shelves cube by cube. The "not in
+my collection" / back-cover flow was deliberately dropped. The README describes the
+app; this file's older sections describe the desktop app in `server/` + `src/`,
+which is still how `data/` gets synced from Discogs.
+
+- `npm run snapshot` turns `data/` into `public/` (collection, 360px covers,
+  DINOv2 embeddings, model). `npm run dev` serves the app on :5178, and
+  `app/phone.html` shows three iPhone-sized frames side by side (dev only).
+- The pure modules moved to `shared/` and are used by both the app and the server.
+- Recognition: DINOv2-small CLS embedding, full frame + centre 80% crop, max per
+  record. The auto-accept rule (score ≥ 0.68 and lead ≥ 0.07) and its measurements
+  are in `app/components/ScanView.tsx`; the harness is
+  `identify/tests/phone_photos.py` + `bench_embed.mjs`.
+- **Not yet validated on a real phone camera.** Everything is measured on
+  synthetic photos and checked in desktop Chrome.
+
 State of the project as of 2026-08-18, written for a session starting with no
 prior context. The app is built and working; the open problem is at the bottom.
 
