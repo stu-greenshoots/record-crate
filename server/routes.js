@@ -16,8 +16,8 @@ import {
   priceEverything,
 } from './enrich.js'
 import { allRecords, sortRecords, SORT_MODES, buildRecord } from './records.js'
-import { collationKey } from './classify.js'
-import { buildShelfMap, locate, DEFAULT_MAP } from './shelfmap.js'
+import { collationKey } from '../shared/classify.js'
+import { buildShelfMap, locate, DEFAULT_MAP } from '../shared/shelfmap.js'
 import { placeRecord, candidateFromRelease } from './place.js'
 import { readBackCover, pythonAvailable, catnoSimilarity } from './identify.js'
 
@@ -277,7 +277,7 @@ router.post('/shelves/reorder', (req, res) => {
 
 /** Re-run auto-classification. Only touches records the user hasn't moved by hand. */
 router.post('/shelves/reclassify', async (req, res) => {
-  const { classifyShelf } = await import('./classify.js')
+  const { classifyShelf } = await import('../shared/classify.js')
   const known = new Set(store.overrides.shelves.map((s) => s.id))
   let changed = 0
   for (const item of store.collection.items) {

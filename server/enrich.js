@@ -1,7 +1,7 @@
 import { api } from './discogs.js'
 import { store } from './store.js'
 import { config } from './config.js'
-import { cleanArtistName } from './classify.js'
+import { cleanArtistName } from '../shared/classify.js'
 
 /**
  * Background crawl that fills in everything the collection endpoint doesn't give us:

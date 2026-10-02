@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { DATA_DIR } from './config.js'
-import { DEFAULT_MAP } from './shelfmap.js'
+import { DEFAULT_MAP } from '../shared/shelfmap.js'
 
 function readJson(file, fallback) {
   try {

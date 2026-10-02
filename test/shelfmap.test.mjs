@@ -1,5 +1,5 @@
-import { buildShelfMap, DEFAULT_MAP } from '../server/shelfmap.js'
-import { shelfWidth } from '../server/thickness.js'
+import { buildShelfMap, DEFAULT_MAP } from '../shared/shelfmap.js'
+import { shelfWidth } from '../shared/thickness.js'
 
 let pass = 0, fail = 0
 const ok = (cond, label, extra = '') => {

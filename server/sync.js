@@ -1,6 +1,6 @@
 import { api } from './discogs.js'
 import { store } from './store.js'
-import { classifyShelf } from './classify.js'
+import { classifyShelf } from '../shared/classify.js'
 
 export const syncState = {
   running: false,

@@ -1,6 +1,6 @@
-import { collationKey, classifyShelf, deriveSortName, cleanArtistName } from './classify.js'
-import { shelfWidth, shelfHeight } from './thickness.js'
-import { buildShelfMap, shelfLetter, byFiling } from './shelfmap.js'
+import { collationKey, classifyShelf, deriveSortName, cleanArtistName } from '../shared/classify.js'
+import { shelfWidth, shelfHeight } from '../shared/thickness.js'
+import { buildShelfMap, shelfLetter, byFiling } from '../shared/shelfmap.js'
 import { allRecords } from './records.js'
 import { store } from './store.js'
 

@@ -1,6 +1,6 @@
 import { store } from './store.js'
-import { deriveSortName, artistKey, collationKey, cleanArtistName } from './classify.js'
-import { shelfWidth, shelfHeight } from './thickness.js'
+import { deriveSortName, artistKey, collationKey, cleanArtistName } from '../shared/classify.js'
+import { shelfWidth, shelfHeight } from '../shared/thickness.js'
 
 function primaryArtist(item) {
   const list = item.info.artists || []

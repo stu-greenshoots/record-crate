@@ -1,4 +1,4 @@
-import { deriveSortName, classifyShelf, collationKey } from '../server/classify.js'
+import { deriveSortName, classifyShelf, collationKey } from '../shared/classify.js'
 
 let pass = 0
 let fail = 0
