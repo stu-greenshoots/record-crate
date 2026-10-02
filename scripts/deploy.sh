@@ -13,6 +13,7 @@ REMOTE=$(git remote get-url origin)
 REV=$(git rev-parse --short HEAD)
 # Publish from a throwaway copy so no repository is ever created inside the project.
 TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
 cp -R dist-app/. "$TMP"
 cd "$TMP"
 git init -q -b gh-pages
@@ -20,5 +21,4 @@ git add -A
 git commit -qm "Deploy $REV"
 git push -f -q "$REMOTE" gh-pages
 cd - >/dev/null
-rm -rf "$TMP"
 echo "Deployed. https://stu-greenshoots.github.io/record-crate/"
