@@ -10,11 +10,15 @@ npm test
 npm run build
 touch dist-app/.nojekyll
 REMOTE=$(git remote get-url origin)
-cd dist-app
-rm -rf .git
+REV=$(git rev-parse --short HEAD)
+# Publish from a throwaway copy so no repository is ever created inside the project.
+TMP=$(mktemp -d)
+cp -R dist-app/. "$TMP"
+cd "$TMP"
 git init -q -b gh-pages
 git add -A
-git commit -qm "Deploy $(git -C .. rev-parse --short HEAD)"
+git commit -qm "Deploy $REV"
 git push -f -q "$REMOTE" gh-pages
-rm -rf .git
+cd - >/dev/null
+rm -rf "$TMP"
 echo "Deployed. https://stu-greenshoots.github.io/record-crate/"

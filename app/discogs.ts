@@ -37,7 +37,21 @@ export interface CheckProgress {
   total?: number
 }
 
-export async function checkDiscogs(onProgress: (p: CheckProgress) => void) {
+let inFlight: ReturnType<typeof run> | null = null
+let progressListener: (p: CheckProgress) => void = () => {}
+
+/** One check at a time, however many times the button is pressed or the page left. */
+export function checkDiscogs(onProgress: (p: CheckProgress) => void) {
+  progressListener = onProgress
+  inFlight ??= run((p) => progressListener(p)).finally(() => {
+    inFlight = null
+  })
+  return inFlight
+}
+
+export const checkRunning = () => inFlight !== null
+
+async function run(onProgress: (p: CheckProgress) => void) {
   const store = getStore()
   if (!store) throw new Error('Not loaded yet')
   const username = store.snapshot.username
@@ -71,8 +85,12 @@ export async function checkDiscogs(onProgress: (p: CheckProgress) => void) {
   }
 
   update((l) => {
-    const keep = l.fresh.filter((r) => live.has(r.id))
-    l.fresh = [...keep, ...fresh]
+    const inSnapshot = new Set(store.snapshot.records.map((r) => r.id))
+    const byId = new Map<number, Rec>()
+    for (const r of [...l.fresh, ...fresh]) {
+      if (live.has(r.id) && !inSnapshot.has(r.id)) byId.set(r.id, r)
+    }
+    l.fresh = [...byId.values()]
     l.gone = gone
     l.lastCheck = new Date().toISOString()
   })

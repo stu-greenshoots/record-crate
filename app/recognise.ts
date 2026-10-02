@@ -42,15 +42,22 @@ export function onRecogniser(l: Listener) {
 
 export function warmUp() {
   if (worker) return
+  if (state.status === 'error') set({ status: 'idle', error: undefined })
   worker = new Worker(new URL('./recognise.worker.ts', import.meta.url), { type: 'module' })
   set({ status: 'loading', progress: 0 })
   worker.onmessage = (e) => {
     const m = e.data
     if (m.type === 'progress') set({ progress: m.progress })
     else if (m.type === 'ready') set({ status: 'ready', progress: 100 })
-    else if (m.type === 'error') set({ status: 'error', error: m.message })
-    else if (m.type === 'result') {
-      pending.get(m.id)?.(m)
+    else if (m.type === 'init-error') {
+      set({ status: 'error', error: m.message })
+      // Start from scratch next time the camera opens.
+      worker?.terminate()
+      worker = null
+      for (const resolve of pending.values()) resolve({ ms: 0, matches: [] })
+      pending.clear()
+    } else if (m.type === 'result' || m.type === 'frame-error') {
+      pending.get(m.id)?.(m.type === 'result' ? m : { ms: 0, matches: [] })
       pending.delete(m.id)
     }
   }

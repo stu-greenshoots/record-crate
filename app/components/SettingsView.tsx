@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { setMap, update, useStore } from '../store'
 import { back, go } from '../route'
-import { checkDiscogs, type CheckProgress } from '../discogs'
+import { checkDiscogs, checkRunning, type CheckProgress } from '../discogs'
 import type { ShelfMapConfig, SlotConfig } from '../types'
 import { BackIcon } from './Icons'
 import { UnitMap } from './UnitMap'
@@ -19,11 +19,47 @@ export function SettingsView() {
   const change = (fn: (m: ShelfMapConfig) => void) => {
     const next = structuredClone(map)
     fn(next)
-    // Keep one slot per cube; new cubes join the alphabetical run.
-    const n = next.cols * next.rows
-    while (next.slots.length < n) next.slots.splice(next.slots.filter((s) => s.type === 'flow').length, 0, { type: 'flow' })
+    fitSlots(next)
     setMap(next)
+    if (editing !== null && editing >= next.cols * next.rows) setEditing(null)
   }
+
+  /** Give a shelf to this cube alone, or take it away. */
+  const toggleShelf = (cube: number, shelfId: string) =>
+    change((m) => {
+      const cur: SlotConfig = m.slots[cube]
+      const ids = new Set(cur.type === 'shelves' ? cur.shelfIds || [] : [])
+      if (ids.has(shelfId)) ids.delete(shelfId)
+      else {
+        if (cur.type === 'flow' && flowCount(m) <= 1) {
+          toast('One cube has to hold the A–Z run')
+          return
+        }
+        ids.add(shelfId)
+        // A shelf lives in one place, so take it out of any other cube.
+        m.slots.forEach((other, i) => {
+          if (i === cube || other.type !== 'shelves') return
+          const rest = (other.shelfIds || []).filter((x) => x !== shelfId)
+          m.slots[i] = rest.length ? { type: 'shelves', shelfIds: rest } : { type: 'flow' }
+        })
+      }
+      m.slots[cube] = ids.size ? { type: 'shelves', shelfIds: [...ids] } : { type: 'flow' }
+    })
+
+  const visible = map.slots.slice(0, map.cols * map.rows)
+  const homeless = snapshot.shelves.filter(
+    (sh) =>
+      sh.id !== map.flowShelf &&
+      !visible.some((sl) => sl.type === 'shelves' && (sl.shelfIds || []).includes(sh.id)) &&
+      store.records.some((r) => r.shelf === sh.id),
+  )
+  const newerSnapshot = Boolean(store.local.map && store.local.mapBase !== snapshot.exportedAt)
+
+  useEffect(() => {
+    // Pick a check back up if one was left running.
+    if (checkRunning()) runCheck()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const runCheck = async () => {
     setCheckError(null)
@@ -90,15 +126,7 @@ export function SettingsView() {
                       type="button"
                       key={s.id}
                       className={`chip ${on ? 'on' : ''}`}
-                      onClick={() =>
-                        change((m) => {
-                          const cur: SlotConfig = m.slots[editing]
-                          const ids = new Set(cur.type === 'shelves' ? cur.shelfIds || [] : [])
-                          if (ids.has(s.id)) ids.delete(s.id)
-                          else ids.add(s.id)
-                          m.slots[editing] = ids.size ? { type: 'shelves', shelfIds: [...ids] } : { type: 'flow' }
-                        })
-                      }
+                      onClick={() => toggleShelf(editing, s.id)}
                     >
                       {s.name}
                     </button>
@@ -106,6 +134,15 @@ export function SettingsView() {
                 })}
             </div>
           </div>
+        )}
+        {homeless.length > 0 && (
+          <p className="error-note">
+            {homeless.map((h) => h.name).join(', ')} {homeless.length === 1 ? 'has' : 'have'} no cube — tap a
+            cube to give {homeless.length === 1 ? 'it' : 'them'} one.
+          </p>
+        )}
+        {newerSnapshot && (
+          <p className="panel-sub">There's a newer snapshot since you changed this layout.</p>
         )}
         {store.local.map && (
           <button
@@ -116,7 +153,7 @@ export function SettingsView() {
               setEditing(null)
             }}
           >
-            Back to the original layout
+            {newerSnapshot ? 'Use the snapshot’s layout' : 'Back to the original layout'}
           </button>
         )}
       </section>
@@ -201,4 +238,44 @@ function Stepper({
       </div>
     </div>
   )
+}
+
+const flowCount = (m: ShelfMapConfig) =>
+  m.slots.slice(0, m.cols * m.rows).filter((s) => s.type === 'flow').length
+
+/**
+ * Make the slot list match the number of cubes. New cubes join the end of the A–Z
+ * run. Removing cubes takes them out of the run first, so the named shelves keep
+ * their place; if a named-shelf cube has to go, its shelves move into the last one
+ * left rather than vanishing.
+ */
+function fitSlots(m: ShelfMapConfig) {
+  const n = m.cols * m.rows
+  let slots = m.slots.slice()
+  while (slots.length < n) {
+    let lastFlow = -1
+    slots.forEach((s, i) => s.type === 'flow' && (lastFlow = i))
+    slots.splice(lastFlow + 1, 0, { type: 'flow' })
+  }
+  while (slots.length > n) {
+    const flows = slots.map((s, i) => (s.type === 'flow' ? i : -1)).filter((i) => i >= 0)
+    if (flows.length > 1) {
+      slots.splice(flows[flows.length - 1], 1)
+      continue
+    }
+    // Only one flow cube left: fold the last shelves cube into the one before it.
+    const shelfSlots = slots.map((s, i) => (s.type === 'shelves' ? i : -1)).filter((i) => i >= 0)
+    const last = shelfSlots[shelfSlots.length - 1]
+    const prev = shelfSlots[shelfSlots.length - 2]
+    if (prev === undefined) {
+      slots = slots.slice(0, n)
+      break
+    }
+    slots[prev] = {
+      type: 'shelves',
+      shelfIds: [...new Set([...(slots[prev].shelfIds || []), ...(slots[last].shelfIds || [])])],
+    }
+    slots.splice(last, 1)
+  }
+  m.slots = slots
 }

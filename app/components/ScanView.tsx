@@ -72,10 +72,27 @@ export function ScanView() {
     return onRecogniser(setModel)
   }, [])
 
+  /**
+   * iOS stops the camera when the phone locks or the app goes to the background,
+   * and leaves a frozen frame behind. So the camera is tied to visibility: released
+   * when hidden, asked for again when back, and restarted if the track just ends.
+   */
+  const [visible, setVisible] = useState(() => document.visibilityState === 'visible')
+  const [restart, setRestart] = useState(0)
+  useEffect(() => {
+    const on = () => setVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', on)
+    return () => document.removeEventListener('visibilitychange', on)
+  }, [])
+
   // Camera.
   useEffect(() => {
     let stream: MediaStream | null = null
     let cancelled = false
+    if (!visible) {
+      setCamera('starting')
+      return
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setCamera('unsupported')
       return
@@ -93,6 +110,7 @@ export function ScanView() {
         await v.play().catch(() => {})
         setCamera('live')
         const track = s.getVideoTracks()[0]
+        track.addEventListener('ended', () => !cancelled && setRestart((n) => n + 1))
         const caps = (track.getCapabilities?.() || {}) as MediaTrackCapabilities & { torch?: boolean }
         if (caps.torch) setTorch({ track, on: false })
       })
@@ -100,8 +118,9 @@ export function ScanView() {
     return () => {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
+      setTorch(null)
     }
-  }, [])
+  }, [visible, restart])
 
   const accept = (rec: Rec) => {
     if (done.current) return

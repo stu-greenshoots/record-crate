@@ -1,22 +1,43 @@
 /**
  * Offline support. The app should open instantly in front of the shelf, signal or
- * not, so everything it needs is cached after the first visit:
+ * not, so everything it needs is cached:
  *
- *   - the page itself: network first, so a new release shows up when online
- *   - the collection and the recognition index: served from cache, refreshed behind
- *   - covers, the model, built assets and the inference runtime: cache first —
- *     they never change under the same URL
+ *   - the page and its built assets: precached at install, so even the second
+ *     launch works offline; the page itself is network-first with a short timeout
+ *   - the collection and recognition index: served from cache, refreshed behind
+ *   - the vector file: named by its content hash, so cache-first is safe
+ *   - covers: served from cache, refreshed behind
+ *   - the model and the ONNX runtime: cache-first, in a cache named after their
+ *     versions, so an upgrade fetches them again and nothing else does
+ *
+ * __BUILD__ and __RUNTIME__ are filled in by the build (vite.app.config.ts).
  */
-const VERSION = 'v1'
-const SHELL = `crate-shell-${VERSION}`
-const STATIC = `crate-static-${VERSION}`
+const BUILD = '__BUILD__'
+const RUNTIME = '__RUNTIME__'
+const SHELL = `crate-shell-${BUILD}`
+const MODEL = `crate-model-${RUNTIME}`
+const COVERS = 'crate-covers'
+const KEEP = [SHELL, MODEL, COVERS]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(SHELL)
-      .then((c) => c.addAll(['./', 'data/collection.json', 'manifest.webmanifest', 'icon.svg']))
-      .then(() => self.skipWaiting()),
+    (async () => {
+      const cache = await caches.open(SHELL)
+      const res = await fetch('./', { cache: 'no-cache' })
+      const html = await res.clone().text()
+      await cache.put('./', res)
+      const assets = [...new Set(html.match(/assets\/[^"')\s]+/g) || [])]
+      await cache.addAll([
+        ...assets,
+        'data/collection.json',
+        'data/embeddings.json',
+        'manifest.webmanifest',
+        'icon.svg',
+        'icon-180.png',
+        'icon-192.png',
+      ])
+      await self.skipWaiting()
+    })(),
   )
 })
 
@@ -24,7 +45,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => ![SHELL, STATIC].includes(k)).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => !KEEP.includes(k)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   )
 })
@@ -33,29 +54,33 @@ const scope = new URL(self.registration.scope)
 
 async function networkFirst(request) {
   const cache = await caches.open(SHELL)
-  try {
-    const res = await fetch(request)
+  const network = fetch(request).then((res) => {
     if (res.ok) cache.put(request, res.clone())
     return res
-  } catch {
-    return (await cache.match(request)) || (await cache.match('./')) || Response.error()
-  }
+  })
+  // On a weak signal, don't keep a record in your hand waiting: fall back to the
+  // cached page after a moment and let the network fill the cache for next time.
+  const timeout = new Promise((resolve) => setTimeout(resolve, 2500))
+  const first = await Promise.race([network.catch(() => null), timeout])
+  if (first) return first
+  const cached = (await cache.match(request)) || (await cache.match('./'))
+  return cached || network.catch(() => Response.error())
 }
 
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(SHELL)
+async function staleWhileRevalidate(request, name) {
+  const cache = await caches.open(name)
   const cached = await cache.match(request)
   const fresh = fetch(request)
     .then((res) => {
       if (res.ok) cache.put(request, res.clone())
       return res
     })
-    .catch(() => cached)
+    .catch(() => cached || Response.error())
   return cached || fresh
 }
 
-async function cacheFirst(request) {
-  const cache = await caches.open(STATIC)
+async function cacheFirst(request, name) {
+  const cache = await caches.open(name)
   const cached = await cache.match(request)
   if (cached) return cached
   const res = await fetch(request)
@@ -73,15 +98,17 @@ self.addEventListener('fetch', (event) => {
     if (request.mode === 'navigate' || path === '' || path === 'index.html') {
       return event.respondWith(networkFirst(request))
     }
-    if (path.startsWith('data/')) return event.respondWith(staleWhileRevalidate(request))
-    if (/^(covers|models|assets|ort)\//.test(path) || /\.(png|svg)$/.test(path)) {
-      return event.respondWith(cacheFirst(request))
+    if (/^data\/embeddings-.*\.bin$/.test(path) || path.startsWith('assets/')) {
+      return event.respondWith(cacheFirst(request, SHELL))
     }
+    if (path.startsWith('data/')) return event.respondWith(staleWhileRevalidate(request, SHELL))
+    if (/^(models|ort)\//.test(path)) return event.respondWith(cacheFirst(request, MODEL))
+    if (path.startsWith('covers/')) return event.respondWith(staleWhileRevalidate(request, COVERS))
+    if (/\.(png|svg|webmanifest)$/.test(path)) return event.respondWith(staleWhileRevalidate(request, SHELL))
     return
   }
 
-  // The ONNX runtime's WebAssembly, and the fonts.
-  if (/cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(url.hostname)) {
-    event.respondWith(cacheFirst(request))
+  if (/fonts\.(googleapis|gstatic)\.com/.test(url.hostname)) {
+    event.respondWith(staleWhileRevalidate(request, COVERS))
   }
 })

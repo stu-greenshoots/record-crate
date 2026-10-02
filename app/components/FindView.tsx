@@ -13,7 +13,13 @@ const QUERY_KEY = 'record-crate:query'
 
 export function FindView() {
   const store = useStore()
-  const [query, setQuery] = useState(() => sessionStorage.getItem(QUERY_KEY) || '')
+  const [query, setQuery] = useState(() => {
+    try {
+      return sessionStorage.getItem(QUERY_KEY) || ''
+    } catch {
+      return ''
+    }
+  })
   const deferred = useDeferredValue(query)
   const input = useRef<HTMLInputElement>(null)
 

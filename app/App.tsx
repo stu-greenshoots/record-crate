@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react'
-import { useStore } from './store'
+import { load, useLoadError, useStore } from './store'
 import { go, useRoute } from './route'
 import { FindView } from './components/FindView'
 import { ScanView } from './components/ScanView'
@@ -48,6 +48,20 @@ export default function App() {
 function Screens() {
   const route = useRoute()
   const store = useStore()
+  const loadError = useLoadError()
+
+  if (loadError && !store) {
+    return (
+      <div className="page empty-state">
+        <span className="empty-disc" aria-hidden />
+        <p>Couldn't load the collection.</p>
+        <p className="empty-sub">{loadError}. Check the connection and try again.</p>
+        <button type="button" className="btn btn-secondary" onClick={() => load()}>
+          Try again
+        </button>
+      </div>
+    )
+  }
 
   if (route.name === 'scan') {
     return (

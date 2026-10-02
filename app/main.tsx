@@ -5,9 +5,7 @@ import { load } from './store'
 import { warmUp } from './recognise'
 import './styles.css'
 
-load().catch((err) => {
-  document.getElementById('root')!.textContent = String(err.message || err)
-})
+load()
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

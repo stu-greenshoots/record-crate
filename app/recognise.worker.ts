@@ -38,18 +38,25 @@ async function init(base: string) {
   env.allowRemoteModels = false
   env.allowLocalModels = true
   env.localModelPath = `${base}models/`
+  // The service worker caches the model and runtime; a second copy in
+  // transformers.js's own cache would just double the 38MB kept on the phone.
+  env.useBrowserCache = false
+  env.useWasmCache = false
   // Our own copy of the plain wasm runtime (see scripts/copy-ort.mjs).
   env.backends.onnx.wasm!.wasmPaths = {
     mjs: `${base}ort/ort-wasm-simd-threaded.mjs`,
     wasm: `${base}ort/ort-wasm-simd-threaded.wasm`,
   }
-  const [meta, bin] = await Promise.all([
-    fetch(`${base}data/embeddings.json`).then((r) => r.json()),
-    fetch(`${base}data/embeddings.bin`).then((r) => r.arrayBuffer()),
-  ])
+  // The index names its own vector file (content-hashed), so the two always match.
+  const meta = await fetch(`${base}data/embeddings.json`).then((r) => r.json())
+  const bin = await fetch(`${base}data/${meta.bin}`).then((r) => {
+    if (!r.ok) throw new Error(`recognition index missing (${r.status})`)
+    return r.arrayBuffer()
+  })
   index = meta.index
   dim = meta.dim
   const half = new Uint16Array(bin)
+  if (half.length !== index.length * dim) throw new Error('recognition index is out of step')
   vectors = new Float32Array(half.length)
   for (let i = 0; i < half.length; i++) vectors[i] = halfToFloat(half[i])
 
@@ -93,18 +100,26 @@ async function recognise(frame: Frame) {
   }
 }
 
+const message = (err: unknown) => String((err as Error)?.message || err)
+
 self.onmessage = async (e: MessageEvent<Init | Frame>) => {
   const msg = e.data
-  try {
-    if (msg.type === 'init') {
+  if (msg.type === 'init') {
+    try {
       ready ??= init(msg.base)
       await ready
       self.postMessage({ type: 'ready' })
-    } else if (msg.type === 'frame') {
-      await ready
-      self.postMessage({ type: 'result', id: msg.id, ...(await recognise(msg)) })
+    } catch (err) {
+      ready = null // let the next attempt start over
+      self.postMessage({ type: 'init-error', message: message(err) })
     }
+    return
+  }
+  try {
+    await ready
+    self.postMessage({ type: 'result', id: msg.id, ...(await recognise(msg)) })
   } catch (err) {
-    self.postMessage({ type: 'error', message: String((err as Error)?.message || err) })
+    // One bad frame answers its own request; it doesn't sink the recogniser.
+    self.postMessage({ type: 'frame-error', id: msg.id, message: message(err) })
   }
 }

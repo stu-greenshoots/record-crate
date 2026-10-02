@@ -13,7 +13,7 @@ export function UnitView() {
   const { built, byId } = store
   const outIds = new Set(store.out.map((r) => r.id))
   const sortedCubes = built.slots.filter(
-    (c) => c.count && (store.local.sorted[c.index] || []).length >= c.count,
+    (c) => c.count && (store.local.sorted[c.index] || []).filter((id) => c.instanceIds.includes(id)).length >= c.count,
   ).length
 
   return (
@@ -69,7 +69,18 @@ export function CubeView({ index }: { index: number }) {
   if (!store) return null
   const { built, byId } = store
   const cube = built.slots[index]
-  if (!cube) return null
+  if (!cube) {
+    return (
+      <div className="page cube-page">
+        <header className="topbar">
+          <button type="button" className="icon-btn" onClick={() => go('unit', true)} aria-label="Back">
+            <BackIcon />
+          </button>
+        </header>
+        <p className="empty-note">That cube isn't on the unit any more.</p>
+      </div>
+    )
+  }
   const sorted = new Set(store.local.sorted[index] || [])
   const done = cube.instanceIds.filter((id) => sorted.has(id)).length
   const outIds = new Set(store.out.map((r) => r.id))

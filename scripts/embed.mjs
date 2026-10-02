@@ -3,13 +3,15 @@
  * using the exact model and preprocessing the browser runs, so a photo taken on the
  * phone is compared like with like.
  *
- *   node scripts/embed.mjs     # after export.mjs; writes public/data/embeddings.bin
+ *   node scripts/embed.mjs     # after export.mjs; writes public/data/embeddings*.{json,bin}
  *
- * The file is float16, row-major, in the order of `index` in embeddings.json.
+ * The vectors are float16, row-major, in the order of `index` in embeddings.json,
+ * which also names the (content-hashed) .bin file holding them.
  * Also copies the model into public/models so the app never depends on a model hub.
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { AutoProcessor, AutoModel, RawImage, env } from '@huggingface/transformers'
 import { ROOT } from '../server/config.js'
 import { MODEL_ID, embedFrom } from '../shared/embed.js'
@@ -31,10 +33,17 @@ for (const [, cover] of covers) {
 const dim = rows[0].length
 const half = new Uint16Array(rows.length * dim)
 rows.forEach((v, r) => v.forEach((x, i) => (half[r * dim + i] = toHalf(x))))
-fs.writeFileSync(path.join(PUBLIC, 'data/embeddings.bin'), Buffer.from(half.buffer))
+// Content-hashed so a cached index can never be paired with someone else's vectors.
+const bytes = Buffer.from(half.buffer)
+const hash = crypto.createHash('sha1').update(bytes).digest('hex').slice(0, 10)
+const bin = `embeddings-${hash}.bin`
+for (const f of fs.readdirSync(path.join(PUBLIC, 'data'))) {
+  if (/^embeddings.*\.bin$/.test(f)) fs.rmSync(path.join(PUBLIC, 'data', f))
+}
+fs.writeFileSync(path.join(PUBLIC, 'data', bin), bytes)
 fs.writeFileSync(
   path.join(PUBLIC, 'data/embeddings.json'),
-  JSON.stringify({ model: MODEL_ID, dim, index: covers.map(([releaseId]) => releaseId) }),
+  JSON.stringify({ model: MODEL_ID, dim, bin, index: covers.map(([releaseId]) => releaseId) }),
 )
 
 // Ship the model alongside the app.

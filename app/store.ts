@@ -18,6 +18,8 @@ export interface Local {
   /** id -> shelf id, for records you've moved by hand. */
   shelfOf: Record<string, string>
   map: ShelfMapConfig | null
+  /** The snapshot a custom layout was made against, to spot a newer one. */
+  mapBase: string | null
   /** Records added on Discogs since the snapshot. */
   fresh: Rec[]
   /** Records no longer in the Discogs collection. */
@@ -35,6 +37,7 @@ const EMPTY: Local = {
   recent: [],
   shelfOf: {},
   map: null,
+  mapBase: null,
   fresh: [],
   gone: [],
   sorted: {},
@@ -71,7 +74,9 @@ export interface Derived {
 function derive(): Derived | null {
   if (!snapshot) return null
   const gone = new Set(local.gone)
-  const records = [...snapshot.records, ...local.fresh]
+  // A record added from Discogs on the phone turns up in the next snapshot too.
+  const inSnapshot = new Set(snapshot.records.map((r) => r.id))
+  const records = [...snapshot.records, ...local.fresh.filter((r) => !inSnapshot.has(r.id))]
     .filter((r) => !gone.has(r.id))
     .map((r) => (local.shelfOf[r.id] ? { ...r, shelf: local.shelfOf[r.id] } : r))
   const byId = new Map(records.map((r) => [r.id, r]))
@@ -128,11 +133,31 @@ export function update(fn: (l: Local) => Local | void) {
   emit()
 }
 
+let loadError: string | null = null
+
 export async function load() {
-  const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`)
-  if (!res.ok) throw new Error(`Couldn't load the collection (${res.status})`)
-  snapshot = await res.json()
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`)
+    if (!res.ok) throw new Error(`Couldn't load the collection (${res.status})`)
+    snapshot = await res.json()
+    loadError = null
+  } catch (err) {
+    loadError = String((err as Error)?.message || err)
+  }
   emit()
+  // Ask the browser not to clear what's saved here (Safari otherwise may, after a
+  // week without a visit, unless the app is on the home screen).
+  navigator.storage?.persist?.().catch(() => {})
+}
+
+export function useLoadError() {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l)
+      return () => listeners.delete(l)
+    },
+    () => loadError,
+  )
 }
 
 export function useStore(): Derived | null {
@@ -181,6 +206,9 @@ export function moveToShelf(id: number, shelf: string, original: string) {
 export function setMap(map: ShelfMapConfig | null) {
   update((l) => {
     l.map = map
+    l.mapBase = map ? snapshot?.exportedAt || null : null
+    // Ticks were for the old cubes.
+    l.sorted = {}
   })
 }
 
