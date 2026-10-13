@@ -1,11 +1,22 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
-import { load } from './store'
+import { getStore, load } from './store'
 import { warmUp } from './recognise'
+import { refresh } from './discogs'
 import './styles.css'
 
-load()
+/**
+ * Look for records added on Discogs a little after opening, at most every few
+ * hours — new purchases turn up without anyone having to remember to check.
+ */
+const CHECK_EVERY_MS = 6 * 3600 * 1000
+load().then(() => {
+  const last = getStore()?.local.lastCheck
+  if (navigator.onLine && (!last || Date.now() - Date.parse(last) > CHECK_EVERY_MS)) {
+    setTimeout(() => refresh({ quiet: true }), 3000)
+  }
+})
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

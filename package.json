@@ -8,6 +8,7 @@
     "dev": "node scripts/copy-ort.mjs && vite --config vite.app.config.ts",
     "build": "node scripts/copy-ort.mjs && tsc --noEmit -p . && vite build --config vite.app.config.ts",
     "preview": "vite preview --config vite.app.config.ts",
+    "sync": "node scripts/sync.mjs",
     "snapshot": "node scripts/export.mjs && node scripts/embed.mjs",
     "server": "node server/index.js",
     "start": "NODE_ENV=production node server/index.js",

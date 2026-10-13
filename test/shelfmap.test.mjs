@@ -104,6 +104,36 @@ ok(bottom[2].label === 'Screen & Play', 'bottom row: Screen & Play')
 ok(bottom[3].label === 'Compilations + Singles', 'bottom row: Compilations + Singles')
 ok(built.cols === 4 && built.rows === 3, 'defaults to 4 wide, 3 high')
 
+console.log('\n— Split modes —')
+const flowOf = (b) => b.slots.filter(s => s.type === 'flow')
+const filled = buildShelfMap({ ...DEFAULT_MAP, split: 'fill' }, records, SHELVES)
+const fc = flowOf(filled)
+ok(fc.slice(0, -1).every(s => s.width <= DEFAULT_MAP.capacity), 'fill: no cube but the last goes over capacity',
+   fc.map(s => s.width).join(' '))
+ok(fc.slice(0, 5).every(s => s.width > DEFAULT_MAP.capacity - 2), 'fill: early cubes are filled to the brim')
+ok(fc.reduce((a, s) => a + s.count, 0) === records.filter(r => r.shelf === 'main').length, 'fill: every record placed')
+
+const lettered = buildShelfMap({ ...ROOMY, split: 'letters' }, records, SHELVES)
+const lc = flowOf(lettered)
+ok(lc[0].from === 'A' && lc.every((s, i) => !i || s.from > lc[i - 1].from), 'letters: suggested starts begin at A and climb',
+   lc.map(s => s.from).join(' '))
+ok(lc.every(s => !/[a-z]/.test(s.label)), 'letters: labels are whole letters', lc.map(s => s.label).join(' | '))
+const letterOf = new Map(records.map(r => [r.instanceId, r.sortName[0]]))
+ok(lc.every((s, i) => s.instanceIds.every(id => letterOf.get(id) >= s.from && (!lc[i + 1] || letterOf.get(id) < lc[i + 1].from))),
+   'letters: every record sits in the cube for its letter')
+
+const handSet = structuredClone(DEFAULT_MAP)
+handSet.split = 'letters'
+'A B C D H M P S W'.split(' ').forEach((l, i) => (handSet.slots[i].from = l))
+const hs = flowOf(buildShelfMap(handSet, records, SHELVES))
+ok(hs[0].label === 'A' && hs[3].label === 'D – G' && hs[8].label === 'W – Z', 'letters: hand-set starts are used as given',
+   hs.map(s => s.label).join(' | '))
+handSet.slots[2].from = 'A'
+const bad = flowOf(buildShelfMap(handSet, records, SHELVES))
+ok(bad[0].from === 'A' && bad[2].from !== 'A', 'letters: out-of-order starts fall back to suggested ones')
+const digits = buildShelfMap({ ...ROOMY, split: 'letters' }, [...records, rec('10cc')], SHELVES)
+ok(flowOf(digits)[0].instanceIds.includes(nextId - 1), 'letters: a name starting with a number goes with A')
+
 console.log('\n— Shelf width —')
 const w = (formats, weight) => shelfWidth({ formats }, weight)
 const LP = [{ name: 'Vinyl', qty: '1', descriptions: ['LP', 'Album'] }]

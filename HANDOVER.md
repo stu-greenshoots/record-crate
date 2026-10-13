@@ -9,7 +9,8 @@ my collection" / back-cover flow was deliberately dropped. The README describes 
 app; this file's older sections describe the desktop app in `server/` + `src/`,
 which is still how `data/` gets synced from Discogs.
 
-- `npm run snapshot` turns `data/` into `public/` (collection, 360px covers,
+- `npm run sync` refreshes `data/` from Discogs without the desktop UI;
+  `npm run snapshot` turns `data/` into `public/` (collection, 360px covers,
   DINOv2 embeddings, model). `npm run dev` serves the app on :5178, and
   `app/phone.html` shows three iPhone-sized frames side by side (dev only).
 - The pure modules moved to `shared/` and are used by both the app and the server.
@@ -17,6 +18,10 @@ which is still how `data/` gets synced from Discogs.
   record. The auto-accept rule (score ≥ 0.68 and lead ≥ 0.07) and its measurements
   are in `app/components/ScanView.tsx`; the harness is
   `identify/tests/phone_photos.py` + `bench_embed.mjs`.
+- On-phone edits (Oct 13): `sortOf` and `shelfOf` per record, `shelves` (renamed
+  or added), and `map.split` = even | fill | letters, with `slot.from` for lettered
+  cubes (`shared/shelfmap.js`). Landmarks (`spot.before/after`) skip records that
+  are out. None of this flows back into `data/` yet.
 - **Not yet validated on a real phone camera.** Everything is measured on
   synthetic photos and checked in desktop Chrome.
 

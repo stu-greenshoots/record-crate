@@ -3,11 +3,12 @@ import { useStore } from '../store'
 import { go } from '../route'
 import { search } from '../search'
 import { warmUp } from '../recognise'
+import { refresh, useCheckProgress } from '../discogs'
 import { yearOf } from '../where'
 import type { Rec } from '../types'
 import type { Derived } from '../store'
 import { Sleeve } from './Sleeve'
-import { CameraIcon, ChevronIcon, CloseIcon, SearchIcon } from './Icons'
+import { CameraIcon, ChevronIcon, CloseIcon, RefreshIcon, SearchIcon } from './Icons'
 
 const QUERY_KEY = 'record-crate:query'
 
@@ -21,6 +22,7 @@ export function FindView() {
     }
   })
   const deferred = useDeferredValue(query)
+  const checking = useCheckProgress()
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -42,7 +44,20 @@ export function FindView() {
       <header className="brand">
         <span className="brand-mark" aria-hidden />
         <span className="brand-name">Record Crate</span>
-        <span className="brand-count">{store.records.length} records</span>
+        <button
+          type="button"
+          className={`brand-count ${checking ? 'checking' : ''}`}
+          onClick={() => refresh()}
+          disabled={Boolean(checking)}
+          aria-label="Check Discogs for new records"
+        >
+          {checking
+            ? checking.total
+              ? `Checking ${checking.done}/${checking.total}`
+              : 'Checking…'
+            : `${store.records.length} records`}
+          <RefreshIcon />
+        </button>
       </header>
 
       <button

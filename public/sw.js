@@ -4,7 +4,9 @@
  *
  *   - the page and its built assets: precached at install, so even the second
  *     launch works offline; the page itself is network-first with a short timeout
- *   - the collection and recognition index: served from cache, refreshed behind
+ *   - the collection: network-first with the same short timeout, so a new snapshot
+ *     shows up the first time the app opens after a deploy
+ *   - the recognition index: served from cache, refreshed behind
  *   - the vector file: named by its content hash, so cache-first is safe
  *   - covers: served from cache, refreshed behind
  *   - the model and the ONNX runtime: cache-first, in a cache named after their
@@ -63,7 +65,7 @@ async function networkFirst(request) {
   const timeout = new Promise((resolve) => setTimeout(resolve, 2500))
   const first = await Promise.race([network.catch(() => null), timeout])
   if (first) return first
-  const cached = (await cache.match(request)) || (await cache.match('./'))
+  const cached = (await cache.match(request)) || (request.mode === 'navigate' ? await cache.match('./') : null)
   return cached || network.catch(() => Response.error())
 }
 
@@ -95,7 +97,7 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin === scope.origin && url.pathname.startsWith(scope.pathname)) {
     const path = url.pathname.slice(scope.pathname.length)
-    if (request.mode === 'navigate' || path === '' || path === 'index.html') {
+    if (request.mode === 'navigate' || path === '' || path === 'index.html' || path === 'data/collection.json') {
       return event.respondWith(networkFirst(request))
     }
     if (/^data\/embeddings-.*\.bin$/.test(path) || path.startsWith('assets/')) {

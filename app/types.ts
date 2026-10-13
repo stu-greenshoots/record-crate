@@ -32,13 +32,18 @@ export interface Shelf {
 export interface SlotConfig {
   type: 'flow' | 'shelves'
   shelfIds?: string[]
+  /** First letter this cube holds, when the A–Z run is split by letter. */
+  from?: string
 }
+
+export type SplitMode = 'even' | 'fill' | 'letters'
 
 export interface ShelfMapConfig {
   cols: number
   rows: number
   capacity: number
   flowShelf: string
+  split?: SplitMode
   slots: SlotConfig[]
 }
 
@@ -56,8 +61,11 @@ export interface Cube {
   row: number
   col: number
   type: 'flow' | 'shelves'
+  shelfIds: string[]
   label: string
   sublabel: string
+  /** First letter, for a lettered A–Z cube. */
+  from: string | null
   count: number
   width: number
   over: boolean
@@ -68,6 +76,7 @@ export interface BuiltMap {
   cols: number
   rows: number
   capacity: number
+  split: SplitMode
   slots: Cube[]
   unplaced: number[]
   total: number

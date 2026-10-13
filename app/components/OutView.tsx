@@ -46,20 +46,12 @@ export function OutView() {
   groups.forEach((g) => (badges[g.cube] = g.recs.length))
   const marked = new Set(out.map((r) => r.id))
 
-  /**
-   * The nearest record still on the shelf to slot it next to. A neighbour that's
-   * itself out is no use as a landmark, so step past it.
-   */
+  /** The nearest record still on the shelf to slot it next to (out ones are skipped). */
   const shelfHint = (id: number) => {
     const spot = spots.get(id)
     if (!spot) return ''
-    const ids = spot.cube.instanceIds
-    for (let i = spot.index - 1; i >= 0; i--) {
-      if (!marked.has(ids[i])) return `after ${byId.get(ids[i])?.title}`
-    }
-    for (let i = spot.index + 1; i < ids.length; i++) {
-      if (!marked.has(ids[i])) return `first in the cube, before ${byId.get(ids[i])?.title}`
-    }
+    if (spot.before) return `after ${spot.before.title}`
+    if (spot.after) return `first in the cube, before ${spot.after.title}`
     return 'the cube is empty'
   }
 

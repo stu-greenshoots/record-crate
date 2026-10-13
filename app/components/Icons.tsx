@@ -93,3 +93,10 @@ export const TorchIcon = () => (
     <path d="M12 12v3" />
   </svg>
 )
+
+export const RefreshIcon = () => (
+  <svg {...base}>
+    <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+    <path d="M19.5 4.5v4h-4" />
+  </svg>
+)

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { setMap, update, useStore } from '../store'
+import { useState } from 'react'
+import { setMap, update, upsertShelf, useStore } from '../store'
 import { back, go } from '../route'
-import { checkDiscogs, checkRunning, type CheckProgress } from '../discogs'
-import type { ShelfMapConfig, SlotConfig } from '../types'
-import { BackIcon } from './Icons'
+import { refresh, useCheckProgress } from '../discogs'
+import type { ShelfMapConfig, SlotConfig, SplitMode } from '../types'
+import { BackIcon, ChevronIcon } from './Icons'
 import { UnitMap } from './UnitMap'
 import { toast } from './Toast'
 import { timeAgo } from './RecordView'
@@ -11,8 +11,7 @@ import { timeAgo } from './RecordView'
 export function SettingsView() {
   const store = useStore()
   const [editing, setEditing] = useState<number | null>(null)
-  const [checking, setChecking] = useState<CheckProgress | null>(null)
-  const [checkError, setCheckError] = useState<string | null>(null)
+  const checking = useCheckProgress()
   if (!store) return null
   const { map, built, snapshot } = store
 
@@ -46,37 +45,30 @@ export function SettingsView() {
       m.slots[cube] = ids.size ? { type: 'shelves', shelfIds: [...ids] } : { type: 'flow' }
     })
 
+  const split: SplitMode = map.split || 'even'
+  const flowCubes = built.slots.filter((c) => c.type === 'flow')
+
+  /** Set where one lettered cube starts, pinning the others where they are now. */
+  const setStart = (cube: number, letter: string) =>
+    change((m) => {
+      flowCubes.forEach((c) => (m.slots[c.index] = { ...m.slots[c.index], from: c.from || undefined }))
+      m.slots[cube] = { ...m.slots[cube], from: letter }
+    })
+
+  const newShelf = () => {
+    const id = `shelf-${Date.now().toString(36)}`
+    upsertShelf({ id, name: 'New shelf' })
+    go(`shelf/${id}`)
+  }
+
   const visible = map.slots.slice(0, map.cols * map.rows)
-  const homeless = snapshot.shelves.filter(
+  const homeless = store.shelves.filter(
     (sh) =>
       sh.id !== map.flowShelf &&
       !visible.some((sl) => sl.type === 'shelves' && (sl.shelfIds || []).includes(sh.id)) &&
       store.records.some((r) => r.shelf === sh.id),
   )
   const newerSnapshot = Boolean(store.local.map && store.local.mapBase !== snapshot.exportedAt)
-
-  useEffect(() => {
-    // Pick a check back up if one was left running.
-    if (checkRunning()) runCheck()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const runCheck = async () => {
-    setCheckError(null)
-    setChecking({ stage: 'Starting' })
-    try {
-      const { added, gone } = await checkDiscogs(setChecking)
-      toast(
-        added.length || gone
-          ? `${added.length} new${gone ? `, ${gone} gone` : ''}`
-          : 'Up to date — nothing new on Discogs',
-      )
-    } catch (err) {
-      setCheckError(String((err as Error).message || err))
-    } finally {
-      setChecking(null)
-    }
-  }
 
   const slot = editing !== null ? map.slots[editing] : null
 
@@ -102,6 +94,34 @@ export function SettingsView() {
           step={5}
           onChange={(v) => change((m) => (m.capacity = v))}
         />
+        <p className="stepper-label">How the A–Z run is split</p>
+        <div className="segmented" role="radiogroup" aria-label="How the A–Z run is split">
+          {(
+            [
+              ['even', 'Evenly'],
+              ['fill', 'Fill up'],
+              ['letters', 'By letter'],
+            ] as [SplitMode, string][]
+          ).map(([mode, label]) => (
+            <button
+              type="button"
+              key={mode}
+              role="radio"
+              aria-checked={split === mode}
+              className={split === mode ? 'on' : ''}
+              onClick={() => change((m) => (m.split = mode))}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="panel-foot flush">
+          {split === 'even'
+            ? 'Cubes are kept about equally full; a letter can run on into the next cube.'
+            : split === 'fill'
+              ? 'Each cube is filled to capacity before the next one starts.'
+              : 'Each cube holds whole letters. Tap a cube to choose where it starts.'}
+        </p>
         <UnitMap built={built} byId={store.byId} highlight={editing !== null ? [editing] : []} onCube={setEditing} />
 
         {slot && editing !== null && (
@@ -117,7 +137,7 @@ export function SettingsView() {
               >
                 A–Z run
               </button>
-              {snapshot.shelves
+              {store.shelves
                 .filter((s) => s.id !== map.flowShelf)
                 .map((s) => {
                   const on = slot.type === 'shelves' && (slot.shelfIds || []).includes(s.id)
@@ -133,6 +153,9 @@ export function SettingsView() {
                   )
                 })}
             </div>
+            {split === 'letters' && slot.type === 'flow' && (
+              <LetterPicker cube={editing} flowCubes={flowCubes} onPick={(l) => setStart(editing, l)} />
+            )}
           </div>
         )}
         {homeless.length > 0 && (
@@ -159,17 +182,35 @@ export function SettingsView() {
       </section>
 
       <section className="panel">
+        <h2 className="panel-title">Shelves</h2>
+        <p className="panel-sub">Rename a shelf, or choose which records stand on it.</p>
+        <ul className="shelf-list">
+          {store.shelves.map((sh) => (
+            <li key={sh.id}>
+              <button type="button" className="row-button" onClick={() => go(`shelf/${sh.id}`)}>
+                <span>{sh.name}</span>
+                <span className="shelf-row-count">{store.records.filter((r) => r.shelf === sh.id).length}</span>
+                <ChevronIcon />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="link-btn" onClick={newShelf}>
+          + New shelf
+        </button>
+      </section>
+
+      <section className="panel">
         <h2 className="panel-title">New records</h2>
         <p className="panel-sub">
           Bought something? Add it on Discogs, then check here — it's filed with the same rules as the rest.
           {store.local.lastCheck ? ` Last checked ${timeAgo(Date.parse(store.local.lastCheck))}.` : ''}
         </p>
-        <button type="button" className="btn btn-secondary" disabled={Boolean(checking)} onClick={runCheck}>
+        <button type="button" className="btn btn-secondary" disabled={Boolean(checking)} onClick={() => refresh()}>
           {checking
             ? `${checking.stage}${checking.total ? ` ${checking.done}/${checking.total}` : '…'}`
             : 'Check Discogs for new records'}
         </button>
-        {checkError && <p className="error-note">{checkError}</p>}
         {store.local.fresh.length > 0 && (
           <ul className="fresh-list">
             {store.local.fresh.map((r) => (
@@ -206,6 +247,44 @@ export function SettingsView() {
         </button>
       </section>
     </div>
+  )
+}
+
+/**
+ * Where a lettered cube starts. The first always starts at A; the rest must come
+ * after the cube before and before the cube after.
+ */
+function LetterPicker({
+  cube,
+  flowCubes,
+  onPick,
+}: {
+  cube: number
+  flowCubes: { index: number; from: string | null }[]
+  onPick: (letter: string) => void
+}) {
+  const at = flowCubes.findIndex((c) => c.index === cube)
+  if (at < 0) return null
+  if (at === 0) return <p className="panel-foot">The first A–Z cube always starts at A.</p>
+  const lo = flowCubes[at - 1].from || 'A'
+  const hi = flowCubes[at + 1]?.from || '['
+  return (
+    <>
+      <p className="panel-sub">Starts at</p>
+      <div className="letter-grid">
+        {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((l) => (
+          <button
+            type="button"
+            key={l}
+            className={flowCubes[at].from === l ? 'on' : ''}
+            disabled={l <= lo || l >= hi}
+            onClick={() => onPick(l)}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
 

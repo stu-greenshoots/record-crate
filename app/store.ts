@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { buildShelfMap } from '../shared/shelfmap.js'
-import type { BuiltMap, Rec, ShelfMapConfig, Snapshot, Spot } from './types'
+import type { BuiltMap, Rec, Shelf, ShelfMapConfig, Snapshot, Spot } from './types'
 
 /**
  * Everything the app knows lives in two layers: the snapshot baked in at build time
@@ -17,6 +17,10 @@ export interface Local {
   recent: number[]
   /** id -> shelf id, for records you've moved by hand. */
   shelfOf: Record<string, string>
+  /** id -> the name it's filed under, where you've corrected it. */
+  sortOf: Record<string, string>
+  /** The shelves, once you've renamed or added any. */
+  shelves: Shelf[] | null
   map: ShelfMapConfig | null
   /** The snapshot a custom layout was made against, to spot a newer one. */
   mapBase: string | null
@@ -36,6 +40,8 @@ const EMPTY: Local = {
   out: {},
   recent: [],
   shelfOf: {},
+  sortOf: {},
+  shelves: null,
   map: null,
   mapBase: null,
   fresh: [],
@@ -64,6 +70,7 @@ export interface Derived {
   local: Local
   records: Rec[]
   byId: Map<number, Rec>
+  shelves: Shelf[]
   map: ShelfMapConfig
   built: BuiltMap
   spots: Map<number, Spot>
@@ -74,34 +81,43 @@ export interface Derived {
 function derive(): Derived | null {
   if (!snapshot) return null
   const gone = new Set(local.gone)
+  const shelves = local.shelves || snapshot.shelves
+  const map = local.map || snapshot.shelfMap
+  const shelfIds = new Set(shelves.map((s) => s.id))
   // A record added from Discogs on the phone turns up in the next snapshot too.
   const inSnapshot = new Set(snapshot.records.map((r) => r.id))
   const records = [...snapshot.records, ...local.fresh.filter((r) => !inSnapshot.has(r.id))]
     .filter((r) => !gone.has(r.id))
-    .map((r) => (local.shelfOf[r.id] ? { ...r, shelf: local.shelfOf[r.id] } : r))
+    .map((r) => {
+      const shelf = local.shelfOf[r.id] || r.shelf
+      const sortName = local.sortOf[r.id] || r.sortName
+      if (shelf === r.shelf && sortName === r.sortName && shelfIds.has(shelf)) return r
+      // A shelf that's been deleted sends its records back to the A–Z run.
+      return { ...r, sortName, shelf: shelfIds.has(shelf) ? shelf : map.flowShelf }
+    })
   const byId = new Map(records.map((r) => [r.id, r]))
-  const map = local.map || snapshot.shelfMap
   const built = buildShelfMap(
     map,
     records.map((r) => ({ ...r, instanceId: r.id })),
-    snapshot.shelves,
+    shelves,
   ) as unknown as BuiltMap
 
   /**
    * Where each record stands — including the ones out of the shelf. A record you're
-   * holding keeps its slot; the neighbours either side are the two to slide it
-   * between, and they don't change because it's gone.
+   * holding keeps its slot. Its landmarks are the nearest records either side that
+   * are actually on the shelf: a neighbour that's out too is no use to slide it next to.
    */
   const spots = new Map<number, Spot>()
   for (const cube of built.slots) {
     const ids = cube.instanceIds
+    const landmark = (from: number, step: number) => {
+      for (let i = from; i >= 0 && i < ids.length; i += step) {
+        if (!local.out[ids[i]]) return byId.get(ids[i]) || null
+      }
+      return null
+    }
     ids.forEach((id, i) => {
-      spots.set(id, {
-        cube,
-        index: i,
-        before: i > 0 ? byId.get(ids[i - 1]) || null : null,
-        after: i < ids.length - 1 ? byId.get(ids[i + 1]) || null : null,
-      })
+      spots.set(id, { cube, index: i, before: landmark(i - 1, -1), after: landmark(i + 1, 1) })
     })
   }
 
@@ -114,7 +130,7 @@ function derive(): Derived | null {
     .filter((r): r is Rec => Boolean(r))
     .sort((a, b) => order(a) - order(b))
 
-  return { snapshot, local, records, byId, map, built, spots, out }
+  return { snapshot, local, records, byId, shelves, map, built, spots, out }
 }
 
 function emit() {
@@ -196,10 +212,60 @@ export function noteLookup(id: number) {
   })
 }
 
-export function moveToShelf(id: number, shelf: string, original: string) {
+/** File a record (or several) under a corrected name; the original name clears it. */
+export function setSortName(ids: number[], sortName: string) {
+  const name = sortName.trim()
   update((l) => {
-    if (shelf === original) delete l.shelfOf[id]
-    else l.shelfOf[id] = shelf
+    for (const id of ids) {
+      const original = snapshot?.records.find((r) => r.id === id)?.sortName ??
+        l.fresh.find((r) => r.id === id)?.sortName
+      if (!name || name === original) delete l.sortOf[id]
+      else l.sortOf[id] = name
+    }
+  })
+}
+
+/** Move records onto a shelf, by hand. */
+export function moveManyToShelf(ids: number[], shelf: string) {
+  update((l) => {
+    for (const id of ids) {
+      const original = snapshot?.records.find((r) => r.id === id)?.shelf ??
+        l.fresh.find((r) => r.id === id)?.shelf
+      if (shelf === original) delete l.shelfOf[id]
+      else l.shelfOf[id] = shelf
+    }
+  })
+}
+
+export function saveShelves(shelves: Shelf[]) {
+  update((l) => {
+    l.shelves = shelves
+  })
+}
+
+/** Rename a shelf, or add one if the id is new. */
+export function upsertShelf(shelf: Shelf) {
+  const current = derived?.shelves || snapshot?.shelves || []
+  const exists = current.some((s) => s.id === shelf.id)
+  saveShelves(exists ? current.map((s) => (s.id === shelf.id ? { ...s, ...shelf } : s)) : [...current, shelf])
+}
+
+/** Remove a shelf: its records go back to the A–Z run and its cube becomes part of it. */
+export function deleteShelf(id: string) {
+  update((l) => {
+    const current = l.shelves || snapshot?.shelves || []
+    l.shelves = current.filter((s) => s.id !== id)
+    for (const [rid, sid] of Object.entries(l.shelfOf)) if (sid === id) delete l.shelfOf[rid]
+    const map = l.map || (snapshot ? structuredClone(snapshot.shelfMap) : null)
+    if (map?.slots.some((s) => s.shelfIds?.includes(id))) {
+      map.slots = map.slots.map((s) => {
+        if (s.type !== 'shelves') return s
+        const rest = (s.shelfIds || []).filter((x) => x !== id)
+        return rest.length ? { type: 'shelves' as const, shelfIds: rest } : { type: 'flow' as const }
+      })
+      l.map = map
+      l.mapBase = snapshot?.exportedAt || null
+    }
   })
 }
 

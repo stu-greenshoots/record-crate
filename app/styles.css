@@ -469,9 +469,23 @@ img {
 }
 
 .brand-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
+  padding: 8px 0 8px 8px;
   color: var(--text-3);
   font-size: 13px;
+  cursor: pointer;
+}
+
+.brand-count svg {
+  width: 15px;
+  height: 15px;
+}
+
+.brand-count.checking svg {
+  animation: spin 1s linear infinite;
 }
 
 .scan-card {
@@ -1476,6 +1490,167 @@ img {
 .fresh-list {
   list-style: none;
   margin-top: 12px;
+}
+
+/* Editing: sort names, shelf names */
+
+.edit-box {
+  padding: 12px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.text-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--ink-860);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+
+.edit-hint {
+  margin-top: 8px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: 14.5px;
+}
+
+.check-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--amber);
+}
+
+.edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.btn-small {
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 14.5px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.title-input {
+  margin: 2px 0 4px;
+  min-height: 52px;
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+}
+
+/* A–Z split: segmented choice and letter picker */
+
+.stepper-label {
+  margin-top: 16px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.panel-foot.flush {
+  margin-top: 6px;
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  margin: 12px 0 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--ink-860);
+}
+
+.segmented button {
+  min-height: 38px;
+  border-radius: 9px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.segmented button.on {
+  background: var(--ink-700);
+  color: var(--text);
+}
+
+.letter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.letter-grid button {
+  height: 38px;
+  border-radius: 9px;
+  background: var(--ink-740);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.letter-grid button.on {
+  background: var(--amber);
+  color: #1d1306;
+}
+
+.letter-grid button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Shelves */
+
+.shelf-list {
+  list-style: none;
+}
+
+.shelf-row-count {
+  margin-left: auto;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.add-results {
+  list-style: none;
+  margin-top: 8px;
+}
+
+.add-btn {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ink-740);
+  color: var(--amber);
+  font-size: 22px;
+  cursor: pointer;
 }
 
 /* ------------------------------------------------------------------ */

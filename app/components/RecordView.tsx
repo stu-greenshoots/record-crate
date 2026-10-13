@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { moveToShelf, noteLookup, putBack, takeOut, useStore } from '../store'
+import { getStore, moveManyToShelf, noteLookup, putBack, setSortName, takeOut, useStore } from '../store'
 import { back, go } from '../route'
 import { alongWords, cubePlace, fractionAlong, yearOf } from '../where'
 import type { Rec } from '../types'
@@ -11,6 +11,7 @@ import { toast } from './Toast'
 export function RecordView({ id }: { id: number }) {
   const store = useStore()
   const [shelfOpen, setShelfOpen] = useState(false)
+  const [sortOpen, setSortOpen] = useState(false)
 
   useEffect(() => {
     noteLookup(id)
@@ -30,8 +31,7 @@ export function RecordView({ id }: { id: number }) {
 
   const spot = store.spots.get(id)
   const isOut = Boolean(store.local.out[id])
-  const original = store.snapshot.records.find((r) => r.id === id)?.shelf || rec.shelf
-  const shelfName = store.snapshot.shelves.find((s) => s.id === rec.shelf)?.name || rec.shelf
+  const shelfName = store.shelves.find((s) => s.id === rec.shelf)?.name || rec.shelf
   const along = spot ? fractionAlong(spot, store.byId) : 0
 
   const onPrimary = () => {
@@ -112,15 +112,16 @@ export function RecordView({ id }: { id: number }) {
         </button>
         {shelfOpen && (
           <div className="chips">
-            {store.snapshot.shelves.map((s) => (
+            {store.shelves.map((s) => (
               <button
                 type="button"
                 key={s.id}
                 className={`chip ${s.id === rec.shelf ? 'on' : ''}`}
                 onClick={() => {
-                  moveToShelf(id, s.id, original)
+                  const from = rec.shelf
+                  moveManyToShelf([id], s.id)
                   setShelfOpen(false)
-                  if (s.id !== rec.shelf) toast(`Moved to ${s.name}`)
+                  if (s.id !== from) toast(`Moved to ${s.name}${whereNow(id)}`, { undo: () => moveManyToShelf([id], from) })
                 }}
               >
                 {s.name}
@@ -128,6 +129,14 @@ export function RecordView({ id }: { id: number }) {
             ))}
           </div>
         )}
+        <button type="button" className="row-button" onClick={() => setSortOpen((v) => !v)}>
+          <span>Filed as</span>
+          <span className="row-value">
+            {rec.sortName}
+            {store.local.sortOf[id] ? ' ✎' : ''}
+          </span>
+        </button>
+        {sortOpen && <SortEditor rec={rec} onDone={() => setSortOpen(false)} />}
         <dl className="facts">
           {rec.label && (
             <>
@@ -141,8 +150,6 @@ export function RecordView({ id }: { id: number }) {
               <dd>{rec.year}</dd>
             </>
           )}
-          <dt>Filed as</dt>
-          <dd>{rec.sortName}</dd>
           {rec.styles?.length > 0 && (
             <>
               <dt>Style</dt>
@@ -155,6 +162,75 @@ export function RecordView({ id }: { id: number }) {
         </a>
       </section>
     </div>
+  )
+}
+
+/** ", now in K – M" — where a record has ended up after an edit. */
+function whereNow(id: number) {
+  const cube = getStore()?.spots.get(id)?.cube
+  return cube ? `, now in ${cube.label}` : ''
+}
+
+/**
+ * Correct the name a record is filed under — "Smith, Patti" rather than "Patti
+ * Smith". Usually it's the artist that's wrong, so it fixes all their records at once.
+ */
+function SortEditor({ rec, onDone }: { rec: Rec; onDone: () => void }) {
+  const store = useStore()!
+  const [name, setName] = useState(rec.sortName)
+  const siblings = store.records.filter((r) => r.artist === rec.artist && r.sortName === rec.sortName)
+  const [all, setAll] = useState(siblings.length > 1)
+  const original =
+    store.snapshot.records.find((r) => r.id === rec.id)?.sortName ??
+    store.local.fresh.find((r) => r.id === rec.id)?.sortName ??
+    rec.sortName
+
+  const save = (value: string) => {
+    const ids = all ? siblings.map((r) => r.id) : [rec.id]
+    const before = new Map(ids.map((i) => [i, store.byId.get(i)!.sortName]))
+    setSortName(ids, value)
+    onDone()
+    toast(`Filed as ${value.trim() || original}${whereNow(rec.id)}`, {
+      undo: () => before.forEach((n, i) => setSortName([i], n)),
+    })
+  }
+
+  return (
+    <form
+      className="edit-box"
+      onSubmit={(e) => {
+        e.preventDefault()
+        save(name)
+      }}
+    >
+      <input
+        className="text-input"
+        value={name}
+        autoFocus
+        autoCapitalize="words"
+        autoCorrect="off"
+        spellCheck={false}
+        onChange={(e) => setName(e.target.value)}
+        aria-label="Filed as"
+      />
+      <p className="edit-hint">Filed by this name, then by year. People usually go surname first: “Smith, Patti”.</p>
+      {siblings.length > 1 && (
+        <label className="check-row">
+          <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
+          All {siblings.length} records by {rec.artist}
+        </label>
+      )}
+      <div className="edit-actions">
+        <button type="submit" className="btn btn-primary btn-small" disabled={!name.trim() || name.trim() === rec.sortName}>
+          Save
+        </button>
+        {rec.sortName !== original && (
+          <button type="button" className="link-btn" onClick={() => save(original)}>
+            Back to “{original}”
+          </button>
+        )}
+      </div>
+    </form>
   )
 }
 

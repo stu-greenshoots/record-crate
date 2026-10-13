@@ -7,6 +7,7 @@ import { RecordView } from './components/RecordView'
 import { OutView } from './components/OutView'
 import { CubeView, UnitView } from './components/UnitView'
 import { SettingsView } from './components/SettingsView'
+import { ShelfView } from './components/ShelfView'
 import { Toaster } from './components/Toast'
 import { ReturnIcon, SearchIcon, UnitIcon } from './components/Icons'
 
@@ -72,7 +73,7 @@ function Screens() {
     )
   }
 
-  const tab = route.name === 'out' ? 'out' : ['unit', 'cube', 'settings'].includes(route.name) ? 'unit' : 'find'
+  const tab = route.name === 'out' ? 'out' : ['unit', 'cube', 'settings', 'shelf'].includes(route.name) ? 'unit' : 'find'
   const outCount = store?.out.length || 0
 
   return (
@@ -84,6 +85,7 @@ function Screens() {
         {route.name === 'unit' && <UnitView />}
         {route.name === 'cube' && <CubeView index={route.index} />}
         {route.name === 'settings' && <SettingsView />}
+        {route.name === 'shelf' && <ShelfView id={route.id} />}
       </main>
 
       <nav className="tabbar" aria-label="Sections">

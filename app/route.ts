@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
  *   #/unit        the whole unit
  *   #/unit/4      one cube, in order
  *   #/settings
+ *   #/shelf/metal  one shelf: its name and records
  */
 export type Route =
   | { name: 'find' }
@@ -20,6 +21,7 @@ export type Route =
   | { name: 'unit' }
   | { name: 'cube'; index: number }
   | { name: 'settings' }
+  | { name: 'shelf'; id: string }
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/')
@@ -34,6 +36,8 @@ export function parse(hash: string): Route {
       return parts[1] ? { name: 'cube', index: Number(parts[1]) } : { name: 'unit' }
     case 'settings':
       return { name: 'settings' }
+    case 'shelf':
+      return { name: 'shelf', id: decodeURIComponent(parts[1] || '') }
     default:
       return { name: 'find' }
   }

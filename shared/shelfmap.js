@@ -152,33 +152,133 @@ function sliceLabel(sorted, letters, from, to) {
 }
 
 /**
+ * Fill each cube to the brim before starting the next, the way you'd shelve a pile
+ * of records into an empty unit. The last cube takes whatever is left.
+ */
+function fillInOrder(widths, n, capacity) {
+  const slices = []
+  let from = 0
+  let load = 0
+  for (let k = 0; k < widths.length; k++) {
+    if (k > from && load + widths[k] > capacity && slices.length < n - 1) {
+      slices.push([from, k])
+      from = k
+      load = 0
+    }
+    load += widths[k]
+  }
+  slices.push([from, widths.length])
+  while (slices.length < n) slices.push([widths.length, widths.length])
+  return slices
+}
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+/**
+ * Starting letters for n cubes, breaking only between whole letters, chosen so each
+ * cube carries about the same shelf width. The first cube always starts at A (and
+ * takes anything filed under a number).
+ */
+export function suggestLetters(letters, widths, n) {
+  const perLetter = new Map()
+  letters.forEach((l, k) => perLetter.set(l, (perLetter.get(l) || 0) + widths[k]))
+  const total = widths.reduce((a, w) => a + w, 0)
+  // Width filed before each letter.
+  const before = []
+  let run = perLetter.get('#') || 0
+  for (const l of ALPHABET) {
+    before.push(run)
+    run += perLetter.get(l) || 0
+  }
+  const starts = ['A']
+  let prev = 0
+  for (let k = 1; k < Math.min(n, 26); k++) {
+    const target = (k * total) / n
+    // Leave a letter for every cube still to come.
+    const last = 26 - (n - k)
+    let best = prev + 1
+    for (let i = prev + 1; i <= last; i++) {
+      if (Math.abs(before[i] - target) < Math.abs(before[best] - target)) best = i
+    }
+    starts.push(ALPHABET[best])
+    prev = best
+  }
+  return starts
+}
+
+/** Valid hand-set starts: one per cube, beginning at A, strictly increasing. */
+function validStarts(starts, n) {
+  if (starts.length !== n || starts[0] !== 'A') return false
+  for (let k = 0; k < n; k++) {
+    if (!ALPHABET.includes(starts[k]) || (k && starts[k] <= starts[k - 1])) return false
+  }
+  return true
+}
+
+/** "A", or "B – D": the letters a lettered cube is set to hold. */
+function letterLabel(start, next) {
+  const end = next ? ALPHABET[ALPHABET.indexOf(next) - 1] : 'Z'
+  return start === end ? start : `${start} \u2013 ${end}`
+}
+
+/**
+ * How the A–Z run is split across its cubes:
+ *   even     — balanced by shelf width, a letter may straddle two cubes (default)
+ *   fill     — each cube filled to capacity before the next
+ *   letters  — each cube holds whole letters, from the starts set on the slots
+ */
+export const SPLIT_MODES = ['even', 'fill', 'letters']
+
+/**
  * Build the full picture: every cube with its label, the records standing in it,
  * and whether it's over capacity.
  */
 export function buildShelfMap(map, records, shelves) {
   const slots = map.slots.slice(0, map.cols * map.rows)
   const flowIndexes = slots.map((s, i) => (s.type === 'flow' ? i : -1)).filter((i) => i >= 0)
+  const n = flowIndexes.length || 1
+  const split = SPLIT_MODES.includes(map.split) ? map.split : 'even'
 
   const flowRecords = records.filter((r) => r.shelf === map.flowShelf).sort(byFiling)
 
   const flowLetters = flowRecords.map(shelfLetter)
   const flowWidths = flowRecords.map((r) => r.width ?? 1)
-  const slices = fillCubes(
-    flowRecords,
-    flowLetters,
-    flowWidths,
-    flowIndexes.length || 1,
-    map.capacity,
-  )
+
+  /** The records for each flow cube, in shelf order. */
+  let groups
+  let starts = null
+  if (split === 'letters') {
+    const set = flowIndexes.map((i) => slots[i].from)
+    starts = validStarts(set, flowIndexes.length) ? set : suggestLetters(flowLetters, flowWidths, n)
+    // Anything not filed under A–Z (a number, another alphabet) goes with A.
+    const cubeOf = (l) => {
+      let c = 0
+      for (let k = 1; k < starts.length; k++) if (l !== '#' && l >= starts[k]) c = k
+      return c
+    }
+    groups = Array.from({ length: n }, () => [])
+    flowRecords.forEach((r, k) => groups[cubeOf(flowLetters[k])].push(r))
+  } else {
+    const slices =
+      split === 'fill'
+        ? fillInOrder(flowWidths, n, map.capacity)
+        : fillCubes(flowRecords, flowLetters, flowWidths, n, map.capacity)
+    groups = slices.map(([from, to]) => Object.assign(flowRecords.slice(from, to), { from, to }))
+  }
 
   // Hand each run of records to its cube, in shelf order.
   const byIndex = new Map()
-  slices.forEach(([from, to], n) => {
-    const slotIndex = flowIndexes[n]
+  groups.forEach((items, c) => {
+    const slotIndex = flowIndexes[c]
     if (slotIndex === undefined) return
     byIndex.set(slotIndex, {
-      items: flowRecords.slice(from, to),
-      label: sliceLabel(flowRecords, flowLetters, from, to),
+      items,
+      label: starts
+        ? starts[c]
+          ? letterLabel(starts[c], starts[c + 1])
+          : 'empty'
+        : sliceLabel(flowRecords, flowLetters, items.from, items.to),
+      from: starts ? starts[c] || null : null,
     })
   })
 
@@ -191,11 +291,13 @@ export function buildShelfMap(map, records, shelves) {
     let items = []
     let label = ''
     let sublabel = ''
+    let from = null
 
     if (slot.type === 'flow') {
       const range = byIndex.get(index)
       items = range ? range.items : []
       label = range ? range.label : 'empty'
+      from = range ? range.from : null
       sublabel = shelfNames.get(map.flowShelf) || ''
     } else {
       const ids = slot.shelfIds || []
@@ -220,6 +322,7 @@ export function buildShelfMap(map, records, shelves) {
       shelfIds: slot.shelfIds || [],
       label,
       sublabel,
+      from,
       count: items.length,
       width: Math.round(width * 10) / 10,
       over: width > map.capacity,
@@ -232,6 +335,7 @@ export function buildShelfMap(map, records, shelves) {
     rows: map.rows,
     capacity: map.capacity,
     flowShelf: map.flowShelf,
+    split,
     slots: built,
     unplaced: records.filter((r) => !placed.has(r.instanceId)).map((r) => r.instanceId),
     total: records.length,

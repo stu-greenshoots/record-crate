@@ -1,7 +1,9 @@
 import { classifyShelf, cleanArtistName, deriveSortName } from '../shared/classify.js'
 import { shelfHeight, shelfWidth } from '../shared/thickness.js'
+import { useSyncExternalStore } from 'react'
 import { getStore, update } from './store'
 import type { Rec } from './types'
+import { toast } from './components/Toast'
 
 /**
  * Catching up with Discogs from the phone. The collection is public, and the API
@@ -38,18 +40,53 @@ export interface CheckProgress {
 }
 
 let inFlight: ReturnType<typeof run> | null = null
-let progressListener: (p: CheckProgress) => void = () => {}
+let progress: CheckProgress | null = null
+const watchers = new Set<() => void>()
 
-/** One check at a time, however many times the button is pressed or the page left. */
-export function checkDiscogs(onProgress: (p: CheckProgress) => void) {
-  progressListener = onProgress
-  inFlight ??= run((p) => progressListener(p)).finally(() => {
-    inFlight = null
-  })
+function report(p: CheckProgress | null) {
+  progress = p
+  watchers.forEach((w) => w())
+}
+
+/** How far a running check has got, or null when none is running. */
+export function useCheckProgress() {
+  return useSyncExternalStore(
+    (w) => {
+      watchers.add(w)
+      return () => watchers.delete(w)
+    },
+    () => progress,
+  )
+}
+
+/** One check at a time, however many times it's asked for or the page left. */
+export function checkDiscogs() {
+  if (!inFlight) {
+    report({ stage: 'Starting' })
+    inFlight = run(report).finally(() => {
+      inFlight = null
+      report(null)
+    })
+  }
   return inFlight
 }
 
-export const checkRunning = () => inFlight !== null
+/**
+ * Check Discogs and say what changed. Quiet checks (the one on opening the app)
+ * only speak up when there's something new.
+ */
+export async function refresh({ quiet = false } = {}) {
+  try {
+    const { added, gone } = await checkDiscogs()
+    if (added.length) {
+      const names = added.slice(0, 2).map((r) => r.title).join(', ')
+      toast(`${added.length} new — ${names}${added.length > 2 ? '…' : ''}${gone ? ` · ${gone} gone` : ''}`)
+    } else if (gone) toast(`${gone} no longer in your collection`)
+    else if (!quiet) toast('Up to date — nothing new on Discogs')
+  } catch (err) {
+    if (!quiet) toast(`Couldn't check Discogs: ${(err as Error).message || err}`)
+  }
+}
 
 async function run(onProgress: (p: CheckProgress) => void) {
   const store = getStore()
@@ -135,7 +172,7 @@ async function toRecord(item: any, filedAs: Map<string, string>): Promise<Rec> {
     genres: b.genres || [],
     styles: b.styles || [],
   }
-  const shelves = new Set(getStore()!.snapshot.shelves.map((s) => s.id))
+  const shelves = new Set(getStore()!.shelves.map((s) => s.id))
   const shelf = classifyShelf(info)
   const descs = (b.formats || []).flatMap((f: any) => f.descriptions || [])
 

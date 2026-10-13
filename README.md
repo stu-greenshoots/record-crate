@@ -17,17 +17,23 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
   best guesses.
 - **The record page** — the big label is the cube (`K – M`), then where that cube
   is ("Middle row, 2nd from left"), a close-up of the cube with the record's slot
-  lit, and the records either side of it. *Taking it out* puts it on the Put back
-  list.
+  lit, and the records either side of it that are still on the shelf. *Taking it
+  out* puts it on the Put back list. *Shelf* and *Filed as* fix a record that's
+  filed wrong — a sort-name fix can cover every record by that artist.
 - **Put back** — everything that's out, grouped by cube in walking order, each
   with the nearest record still on the shelf to slot it next to. Tick them off.
 - **Unit** — the whole unit drawn as spines coloured from the sleeves. Open a cube
   for its records in shelf order, with a checklist for sorting the real shelf to
   match. *Settings* (the cog) changes the unit's size, cube capacity and what each
-  cube holds, and checks Discogs for records bought since the snapshot.
+  cube holds, and how the A–Z run is split: *Evenly* (balanced, a letter may run
+  into the next cube), *Fill up* (each cube full before the next) or *By letter*
+  (whole letters, you choose where each cube starts). *Shelves* renames shelves,
+  adds new ones and picks which records stand on each.
+- **New records** — the app checks Discogs a few seconds after opening (at most
+  every six hours), and the record count on Find checks on demand.
 
-What you do on the phone — what's out, ticks, layout changes — is saved on that
-phone.
+What you do on the phone — what's out, ticks, layout, sort-name and shelf fixes —
+is saved on that phone.
 
 ## How the camera works
 
@@ -67,11 +73,13 @@ collection, artists, master years and cached covers, pulled by the original
 desktop app in `server/` + `src/`).
 
 ```bash
+npm run sync       # Discogs -> data/ (collection, artists, master years, covers)
 npm run snapshot   # data/ -> public/data/collection.json, covers, embeddings, model
-git commit -am "New snapshot" && git push   # GitHub Actions rebuilds the site
+npm run deploy     # build and publish to the gh-pages branch
 ```
 
-Between snapshots, *Settings → Check Discogs for new records* files new purchases
+`sync` needs the Discogs login in `data/auth.json` (made by connecting once through
+`npm run server`). Between snapshots, the app's own Discogs check files new purchases
 on the phone using the same rules (the public collection API needs no login). The
 camera learns their sleeves at the next snapshot.
 
