@@ -113,6 +113,11 @@ img {
   padding: calc(var(--safe-t) + 14px) 16px calc(var(--tabbar-h) + var(--safe-b) + 32px);
 }
 
+/* Room to scroll a field near the bottom of the page up above the keyboard. */
+body.typing .page {
+  padding-bottom: 60vh;
+}
+
 .loading {
   display: grid;
   place-items: center;

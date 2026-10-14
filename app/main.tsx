@@ -24,6 +24,40 @@ createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
+/**
+ * Keep the field you're typing in — and its Save button — above the keyboard. iOS
+ * doesn't reliably scroll a field into view when it appears from tapping something
+ * else, and near the bottom of a page there's no room to scroll it up anyway; so
+ * while typing the page gets extra room below, and the field's form is scrolled
+ * clear of the keyboard whenever it opens or resizes.
+ */
+const isTextField = (el: Element | null) =>
+  Boolean(el?.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea'))
+
+function keepFieldInView() {
+  const el = document.activeElement as HTMLElement | null
+  if (!isTextField(el)) return
+  const box = (el!.closest('form, .search-box') as HTMLElement | null) || el!
+  const vv = window.visualViewport
+  const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+  const over = box.getBoundingClientRect().bottom + 16 - visibleBottom
+  if (over > 0) window.scrollBy({ top: over, behavior: 'smooth' })
+}
+
+document.addEventListener('focusin', (e) => {
+  if (!isTextField(e.target as Element)) return
+  document.body.classList.add('typing')
+  // Once the keyboard has had time to come up.
+  setTimeout(keepFieldInView, 350)
+})
+document.addEventListener('focusout', () => {
+  setTimeout(() => {
+    const el = document.activeElement
+    if (!isTextField(el) && !el?.closest('.edit-box')) document.body.classList.remove('typing')
+  }, 150)
+})
+window.visualViewport?.addEventListener('resize', keepFieldInView)
+
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
 }
