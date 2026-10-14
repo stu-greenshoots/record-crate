@@ -59,7 +59,10 @@ export function ScanView() {
     window.addEventListener('resize', on)
     return () => window.removeEventListener('resize', on)
   }, [])
-  const guide = guideSize(viewport.w, viewport.h)
+  // The camera's own frame size, once it's known; phone sensors are 4:3.
+  const [dims, setDims] = useState({ w: 3, h: 4 })
+  const rect = videoRect(viewport.w, viewport.h, dims.w, dims.h)
+  const guide = Math.min(rect.w, rect.h) * GUIDE
 
   const byRelease = useMemo(() => {
     const m = new Map<number, Rec>()
@@ -100,7 +103,9 @@ export function ScanView() {
     navigator.mediaDevices
       .getUserMedia({
         audio: false,
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+        // Ask for a native 4:3 format: anything else (a square, 16:9) makes the
+        // browser crop the sensor, and the picture looks zoomed in.
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } },
       })
       .then(async (s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop())
@@ -111,8 +116,17 @@ export function ScanView() {
         setCamera('live')
         const track = s.getVideoTracks()[0]
         track.addEventListener('ended', () => !cancelled && setRestart((n) => n + 1))
-        const caps = (track.getCapabilities?.() || {}) as MediaTrackCapabilities & { torch?: boolean }
+        const caps = (track.getCapabilities?.() || {}) as MediaTrackCapabilities & {
+          torch?: boolean
+          zoom?: { min: number; max: number }
+        }
         if (caps.torch) setTorch({ track, on: false })
+        // Some phones start zoomed in; go back to 1x (not below, which on some
+        // phones switches to the fisheye ultra-wide lens).
+        if (caps.zoom) {
+          const zoom = Math.max(caps.zoom.min, Math.min(1, caps.zoom.max))
+          track.applyConstraints({ advanced: [{ zoom } as MediaTrackConstraintSet] }).catch(() => {})
+        }
       })
       .catch(() => setCamera('denied'))
     return () => {
@@ -179,7 +193,7 @@ export function ScanView() {
     try {
       const bitmap = await createImageBitmap(file)
       const c = canvas.current!
-      const side = Math.min(bitmap.width, bitmap.height) * 0.86
+      const side = Math.min(bitmap.width, bitmap.height) * GUIDE
       c.width = c.height = SAMPLE
       const ctx = c.getContext('2d', { willReadFrequently: true })!
       ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, SAMPLE, SAMPLE)
@@ -214,13 +228,22 @@ export function ScanView() {
 
   return (
     <div className="scan">
-      <video ref={video} className="scan-video" playsInline muted autoPlay />
+      <video
+        ref={video}
+        className="scan-video"
+        style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
+        playsInline
+        muted
+        autoPlay
+        onLoadedMetadata={(e) => setDims(sizeOf(e.currentTarget))}
+        onResize={(e) => setDims(sizeOf(e.currentTarget))}
+      />
       <canvas ref={canvas} hidden />
 
-      <div className="scan-shade" aria-hidden>
+      <div className="scan-shade" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-hidden>
         <div
           className={`scan-guide ${model.status === 'ready' && camera === 'live' ? 'active' : ''}`}
-          style={{ width: guide, height: guide, marginTop: guideOffset(viewport.h) * 2 }}
+          style={{ width: guide, height: guide }}
         >
           <i />
           <i />
@@ -288,32 +311,37 @@ export function ScanView() {
   )
 }
 
+/** How much of the picture's shorter side the guide square covers. */
+const GUIDE = 0.86
+
+const sizeOf = (v: HTMLVideoElement) => (v.videoWidth ? { w: v.videoWidth, h: v.videoHeight } : { w: 3, h: 4 })
+
+/** Room kept clear for the buttons at the top and the guesses at the bottom. */
+const TOP = 64
+const BOTTOM = 200
+
 /**
- * Copy the part of the frame inside the on-screen guide square. The video is drawn
- * with object-fit: cover, so screen coordinates have to be mapped back through the
- * crop and scale to find the same square in the camera's own pixels.
+ * Where the whole camera picture goes on screen: as large as fits between the
+ * buttons and the guesses, never cropped — so what you see is what the camera sees.
+ */
+export function videoRect(sw: number, sh: number, vw: number, vh: number) {
+  const areaH = Math.max(120, sh - TOP - BOTTOM)
+  const scale = Math.min(sw / vw, areaH / vh)
+  const w = vw * scale
+  const h = vh * scale
+  return { x: (sw - w) / 2, y: TOP + (areaH - h) / 2, w, h }
+}
+
+/**
+ * Copy the part of the frame inside the guide square. The whole picture is shown,
+ * uncropped, with the square in its centre, so it's the same centred square in the
+ * camera's own pixels — and the same crop a still photo gets.
  */
 export function grabSquare(v: HTMLVideoElement, c: HTMLCanvasElement): ImageData | null {
   if (!v.videoWidth || v.readyState < 2) return null
-  const vw = v.videoWidth
-  const vh = v.videoHeight
-  const ew = v.clientWidth
-  const eh = v.clientHeight
-  const scale = Math.max(ew / vw, eh / vh)
-  const guide = guideSize(ew, eh)
-  const side = guide / scale
-  const cx = vw / 2
-  const cy = vh / 2 + guideOffset(eh) / scale
+  const side = Math.min(v.videoWidth, v.videoHeight) * GUIDE
   c.width = c.height = SAMPLE
   const ctx = c.getContext('2d', { willReadFrequently: true })!
-  ctx.drawImage(v, cx - side / 2, cy - side / 2, side, side, 0, 0, SAMPLE, SAMPLE)
+  ctx.drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, SAMPLE, SAMPLE)
   return ctx.getImageData(0, 0, SAMPLE, SAMPLE)
-}
-
-/** Kept in step with .scan-guide in the stylesheet. */
-export function guideSize(w: number, h: number) {
-  return Math.min(w * 0.82, h * 0.56)
-}
-function guideOffset(h: number) {
-  return -h * 0.06
 }
