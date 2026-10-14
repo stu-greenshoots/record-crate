@@ -25,9 +25,11 @@ createRoot(document.getElementById('root')!).render(
 )
 
 /**
- * Keep the field you're typing in — and its Save button — above the keyboard. iOS
- * doesn't reliably scroll a field into view when it appears from tapping something
- * else, and near the bottom of a page there's no room to scroll it up anyway; so
+ * Keep the field you're typing in — and its Save button — above the keyboard. Phone
+ * browsers (Chrome on Android since 108, and Safari) lay the keyboard over the page
+ * rather than shrinking it, don't reliably scroll a field into view when it appears
+ * from tapping something else, and near the bottom of a page there's no room to
+ * scroll it up anyway; so
  * while typing the page gets extra room below, and the field's form is scrolled
  * clear of the keyboard whenever it opens or resizes.
  */
