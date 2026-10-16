@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { buildShelfMap } from '../shared/shelfmap.js'
+import { EMPTY_LOCAL, fromBackup, toBackup } from '../shared/backup.js'
 import type { BuiltMap, Rec, Shelf, ShelfMapConfig, Snapshot, Spot } from './types'
 
 /**
@@ -35,20 +36,7 @@ export interface Local {
 
 const KEY = 'record-crate:v1'
 
-const EMPTY: Local = {
-  version: 1,
-  out: {},
-  recent: [],
-  shelfOf: {},
-  sortOf: {},
-  shelves: null,
-  map: null,
-  mapBase: null,
-  fresh: [],
-  gone: [],
-  sorted: {},
-  lastCheck: null,
-}
+const EMPTY = EMPTY_LOCAL as Local
 
 function read(): Local {
   try {
@@ -297,4 +285,16 @@ export function resetSorted(cube: number) {
 export function coverUrl(r: Rec) {
   if (r.cover) return `${import.meta.env.BASE_URL}${r.cover}`
   return r.remoteCover || ''
+}
+
+export function backupText() {
+  return toBackup(local, snapshot?.exportedAt || null)
+}
+
+/** Replaces everything saved on this phone with the backup; returns what it replaced. */
+export function restoreBackup(text: string) {
+  const restored = fromBackup(text).local as Local
+  const saved = local
+  update(() => restored)
+  return saved
 }
