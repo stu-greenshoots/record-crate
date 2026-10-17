@@ -2064,8 +2064,13 @@ body.typing .page {
   will-change: transform;
 }
 
+/* Follow the finger closely, but from wherever the sleeves are: a second flick
+   while the ring is still turning mustn't snap them to where the first was going. */
 .stage.dragging .orbit {
-  transition: none;
+  transition:
+    transform 0.15s linear,
+    opacity 0.3s ease,
+    filter 0.3s ease;
 }
 
 .orbit .sleeve {

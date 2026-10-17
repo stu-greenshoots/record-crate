@@ -25,6 +25,8 @@ import { toast } from './Toast'
 
 /** How far either side of the platter sleeves are drawn. */
 const SHOWN = 3
+/** The most records one flick moves. */
+const FLING = 6
 
 /** A record moved onto the platter by spinning, not looked up: kept out of "recent". */
 let spunTo: number | null = null
@@ -165,6 +167,16 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
   const gesture = useRef<{ start: number; last: number; t: number; v: number; moved: boolean } | null>(null)
   const swallowClick = useRef(false)
 
+  // A record put on by search or the camera is lowered onto the platter; one reached
+  // by spinning the ring just swaps its label, or a fast spin would keep re-dropping.
+  const seen = useRef<{ id: number | null; drop: number }>({ id: null, drop: 0 })
+  const id = rec?.id ?? null
+  if (id !== seen.current.id) {
+    if (spunTo !== id) seen.current.drop++
+    seen.current.id = id
+  }
+  const drop = seen.current.drop
+
   useLayoutEffect(() => {
     const el = stage.current
     if (!el) return
@@ -222,7 +234,7 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
     swallowClick.current = true
     // Carry on in the direction of the flick, as a platter would.
     const fling = (-gs.v * 260) / stepPx
-    const shift = Math.round(drag + Math.max(-6, Math.min(6, fling)))
+    const shift = Math.max(-FLING, Math.min(FLING, Math.round(drag + fling)))
     setDrag(0)
     moveTo(ring.at + shift)
   }
@@ -230,7 +242,9 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
   const at = ring.at + drag
   const shown = ring.ids
     .map((rid, k) => ({ rid, k, off: k - at }))
-    .filter(({ off }) => Math.abs(off) <= SHOWN + 1)
+    // Sleeves a flick can bring into view stay mounted, unseen, so they come round
+    // the ring from where they really are rather than appearing in place.
+    .filter(({ off }) => Math.abs(off) <= SHOWN + FLING + 1)
 
   const spot = rec ? store.spots.get(rec.id) : null
   // The arm tracks the needle across the record as you walk along the cube.
@@ -274,11 +288,11 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
           )}
           <span className="platter" aria-hidden style={{ left: g.cx - g.d / 2 - 10, top: g.cy - g.d / 2 - 10, width: g.d + 20, height: g.d + 20 }} />
           <div
-            key={rec?.id ?? 'empty'}
+            key={rec ? `on-${drop}` : 'empty'}
             className={`disc ${rec ? 'on' : 'empty'}`}
             style={{ left: g.cx - g.d / 2, top: g.cy - g.d / 2, width: g.d, height: g.d }}
           >
-            {rec ? <RecordLabel rec={rec} /> : <span className="disc-label blank" />}
+            {rec ? <RecordLabel key={rec.id} rec={rec} /> : <span className="disc-label blank" />}
           </div>
           <span className="spindle" aria-hidden style={{ left: g.cx, top: g.cy }} />
           {wide && (
@@ -295,9 +309,7 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
             const near = Math.max(0, 1 - Math.abs(off))
             const radius = g.r + (g.r0 - g.r) * near
             const sz = g.s + (g.s0 - g.s) * near
-            const a = ((g.base + off * g.step) * Math.PI) / 180
-            const x = g.cx + radius * Math.cos(a) - g.s0 / 2
-            const y = g.cy + radius * Math.sin(a) - g.s0 / 2
+            const a = g.base + off * g.step
             const hidden = Math.abs(off) > SHOWN + 0.2
             const centre = k === ring.at
             return (
@@ -308,7 +320,9 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
                 style={{
                   width: g.s0,
                   height: g.s0,
-                  transform: `translate(${x}px, ${y}px) scale(${sz / g.s0})`,
+                  // Placed by angle and radius from the spindle, so a move animates
+                  // round the ring; as x and y it would cut straight across the platter.
+                  transform: `translate(${g.cx - g.s0 / 2}px, ${g.cy - g.s0 / 2}px) rotate(${a}deg) translateX(${radius}px) rotate(${-a}deg) scale(${sz / g.s0})`,
                   zIndex: 20 - Math.round(Math.abs(off)),
                   opacity: hidden ? 0 : 1,
                   filter: `brightness(${centre && rec ? 1 : Math.max(0.4, 0.8 - Math.abs(off) * 0.12)})`,
