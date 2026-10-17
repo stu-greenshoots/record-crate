@@ -6,7 +6,7 @@ import type { ShelfMapConfig, SlotConfig, SplitMode } from '../types'
 import { BackIcon, ChevronIcon } from './Icons'
 import { UnitMap } from './UnitMap'
 import { toast } from './Toast'
-import { timeAgo } from './RecordView'
+import { timeAgo } from './RecordDetails'
 
 export function SettingsView() {
   const store = useStore()

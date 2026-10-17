@@ -2,7 +2,7 @@ import { resetSorted, toggleSorted, useStore } from '../store'
 import { back, go } from '../route'
 import { cubePlace, yearOf } from '../where'
 import { UnitMap } from './UnitMap'
-import { CubeStrip } from './RecordView'
+import { CubeStrip } from './RecordDetails'
 import { BackIcon, CheckIcon, ChevronIcon, GearIcon } from './Icons'
 import { Sleeve } from './Sleeve'
 

@@ -19,6 +19,8 @@ export interface Rec {
   cover: string | null
   remoteCover: string | null
   colour?: string | null
+  /** The centre label, cropped to its circle, where a photo of it was found. */
+  labelArt?: string | null
   /** Pulled in from Discogs after the snapshot was taken. */
   fresh?: boolean
 }

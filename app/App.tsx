@@ -1,15 +1,15 @@
 import { Component, type ReactNode } from 'react'
 import { load, useLoadError, useStore } from './store'
 import { go, useRoute } from './route'
-import { FindView } from './components/FindView'
 import { ScanView } from './components/ScanView'
-import { RecordView } from './components/RecordView'
+import { TurntableView } from './components/TurntableView'
 import { OutView } from './components/OutView'
 import { CubeView, UnitView } from './components/UnitView'
 import { SettingsView } from './components/SettingsView'
 import { ShelfView } from './components/ShelfView'
 import { Toaster } from './components/Toast'
-import { ReturnIcon, SearchIcon, UnitIcon } from './components/Icons'
+import { CameraIcon, DiscIcon, ReturnIcon, UnitIcon } from './components/Icons'
+import { warmUp } from './recognise'
 
 /** If a screen throws, offer a way back rather than a blank page. */
 class Boundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -73,14 +73,16 @@ function Screens() {
     )
   }
 
-  const tab = route.name === 'out' ? 'out' : ['unit', 'cube', 'settings', 'shelf'].includes(route.name) ? 'unit' : 'find'
+  const tab = route.name === 'out' ? 'out' : ['unit', 'cube', 'settings', 'shelf'].includes(route.name) ? 'unit' : 'deck'
+  const onDeck = route.name === 'find' || route.name === 'record'
   const outCount = store?.out.length || 0
 
   return (
     <div className="shell">
-      <main key={route.name + ('id' in route ? route.id : '') + ('index' in route ? route.index : '')} className="view">
-        {route.name === 'find' && <FindView />}
-        {route.name === 'record' && <RecordView id={route.id} />}
+      {/* One turntable for the home screen and every record, so moving along the shelf
+          turns the ring rather than loading a new page. */}
+      <main key={onDeck ? 'deck' : route.name + ('index' in route ? route.index : '') + ('id' in route ? route.id : '')} className="view">
+        {onDeck && <TurntableView id={route.name === 'record' ? route.id : null} />}
         {route.name === 'out' && <OutView />}
         {route.name === 'unit' && <UnitView />}
         {route.name === 'cube' && <CubeView index={route.index} />}
@@ -89,9 +91,13 @@ function Screens() {
       </main>
 
       <nav className="tabbar" aria-label="Sections">
-        <button type="button" className={tab === 'find' ? 'on' : ''} onClick={() => go('', tab === 'find')}>
-          <SearchIcon />
-          <span>Find</span>
+        <button type="button" className={tab === 'deck' ? 'on' : ''} onClick={() => go('', tab === 'deck')}>
+          <DiscIcon />
+          <span>Turntable</span>
+        </button>
+        <button type="button" onPointerDown={() => warmUp()} onClick={() => go('scan')}>
+          <CameraIcon />
+          <span>Scan</span>
         </button>
         <button type="button" className={tab === 'out' ? 'on' : ''} onClick={() => go('out', tab === 'out')}>
           <span className="tab-icon">
