@@ -4,29 +4,38 @@
    ================================================================== */
 
 :root {
-  --ink-900: #0b0a09;
-  --ink-860: #110f0e;
-  --ink-820: #171513;
-  --ink-780: #1e1b18;
-  --ink-740: #282421;
-  --ink-700: #332e29;
+  /* The room: a charcoal wall, a stained-pine unit, a mustard curtain and stool,
+     an oxblood Chesterfield, cream sleeves. */
+  --ink-900: #1d1a19;
+  --ink-860: #221e1d;
+  --ink-820: #282423;
+  --ink-780: #2f2a28;
+  --ink-740: #38322f;
+  --ink-700: #433c38;
 
-  --line: rgba(255, 240, 220, 0.07);
-  --line-2: rgba(255, 240, 220, 0.13);
+  --line: rgba(241, 233, 220, 0.08);
+  --line-2: rgba(241, 233, 220, 0.16);
 
-  --text: #f4efe6;
-  --text-2: #b1a99c;
-  --text-3: #776e63;
+  --text: #f1e9dc;
+  --text-hi: #fbf4e8;
+  --text-2: #cfc3b2;
+  --text-3: #8f8576;
 
-  --amber: #e8a33d;
-  --amber-2: #ffcf82;
-  --amber-dim: rgba(232, 163, 61, 0.14);
-  --amber-glow: rgba(232, 163, 61, 0.45);
+  --amber: #e0ad48;
+  --amber-2: #f0c46a;
+  --amber-dim: rgba(224, 173, 72, 0.14);
+  --amber-glow: rgba(224, 173, 72, 0.45);
+  --oxblood: #6b2224;
+  --oxblood-text: #fbeee6;
+  --pine: #7a4520;
+  --pine-light: #6b4c30;
+  --pine-dark: #4a3420;
+  --vinyl: #121010;
   --sage: #8fb88a;
-  --rust: #d0674a;
+  --rust: #c8573f;
 
-  --serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --sans: 'Figtree Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --radius: 14px;
@@ -50,7 +59,7 @@ html {
 body {
   min-height: 100dvh;
   background:
-    radial-gradient(120% 60% at 50% -10%, rgba(232, 163, 61, 0.08), transparent 60%),
+    radial-gradient(120% 60% at 50% -10%, rgba(224, 173, 72, 0.07), transparent 60%),
     var(--ink-900);
   color: var(--text);
   font-family: var(--sans);
@@ -508,10 +517,10 @@ body.typing .page {
   border-radius: 20px;
   overflow: hidden;
   background:
-    radial-gradient(140% 120% at 0% 0%, rgba(232, 163, 61, 0.22), transparent 55%),
+    radial-gradient(140% 120% at 0% 0%, rgba(224, 173, 72, 0.22), transparent 55%),
     linear-gradient(160deg, #2a241d, #1a1714);
-  border: 1px solid rgba(232, 163, 61, 0.22);
-  box-shadow: 0 18px 40px -22px rgba(232, 163, 61, 0.5);
+  border: 1px solid rgba(224, 173, 72, 0.22);
+  box-shadow: 0 18px 40px -22px rgba(224, 173, 72, 0.5);
   cursor: pointer;
   transition: transform 0.18s var(--ease);
 }
@@ -577,7 +586,7 @@ body.typing .page {
 }
 
 .search-box:focus-within {
-  border-color: rgba(232, 163, 61, 0.5);
+  border-color: rgba(224, 173, 72, 0.5);
   color: var(--amber);
 }
 
@@ -1011,7 +1020,7 @@ body.typing .page {
   margin: 4px 0;
   padding: 10px;
   background: var(--amber-dim);
-  box-shadow: inset 0 0 0 1.5px rgba(232, 163, 61, 0.55);
+  box-shadow: inset 0 0 0 1.5px rgba(224, 173, 72, 0.55);
 }
 
 .sandwich-me::before {

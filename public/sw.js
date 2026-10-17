@@ -109,8 +109,4 @@ self.addEventListener('fetch', (event) => {
     if (/\.(png|svg|webmanifest)$/.test(path)) return event.respondWith(staleWhileRevalidate(request, SHELL))
     return
   }
-
-  if (/fonts\.(googleapis|gstatic)\.com/.test(url.hostname)) {
-    event.respondWith(staleWhileRevalidate(request, COVERS))
-  }
 })
