@@ -1,4 +1,4 @@
-import { fromBackup, toBackup } from '../shared/backup.js'
+import { fromBackup, mergeIntoOverrides, toBackup } from '../shared/backup.js'
 
 let pass = 0, fail = 0
 const ok = (cond, label, extra = '') => {
@@ -46,6 +46,27 @@ refuses(JSON.stringify(local), 'refuses bare phone data that is not a backup fil
 refuses(JSON.stringify({ ...JSON.parse(text), version: 2 }), 'refuses a backup version it does not know')
 refuses(JSON.stringify({ ...JSON.parse(text), local: { ...local, sorted: [] } }), 'refuses cube ticks that are not keyed by cube')
 refuses(JSON.stringify({ ...JSON.parse(text), local: { ...local, out: null } }), 'refuses a missing out list')
+
+const laptop = {
+  shelves: [{ id: 'main', name: 'Main Shelf' }, { id: 'singles', name: 'Singles' }],
+  records: { 101: { shelf: 'main', position: null }, 7: { shelf: 'main', position: null } },
+  artists: { 'id:1': { sortName: 'Bowie' } },
+  settings: {},
+  shelfMap: { cols: 4, rows: 3, capacity: 83, flowShelf: 'main', slots: [] },
+}
+const before = JSON.stringify(laptop)
+const merged = mergeIntoOverrides(laptop, { ...local, shelfOf: { 7: 'singles', 999: 'main' } }, 42)
+const m = merged.overrides
+ok(m.records[7].shelf === 'singles' && m.records[7].movedAt === 42, 'a record moved on the phone moves on the laptop')
+ok(m.records[101].sortName === 'Bowie, David', 'a corrected name is kept on that record')
+ok(m.artists['id:1'].sortName === 'Bowie', "an artist's own override is left alone")
+ok(m.shelves[1].name === '7-inches' && m.shelfMap.split === 'letters', 'shelves and the unit come across')
+ok(!('out' in m) && !('sorted' in m) && !m.records[101].out, 'what is out and the ticks stay on the phone')
+ok(merged.changes.some((c) => c.startsWith('skip 999')), 'a record the laptop does not have is reported, not invented')
+ok(!m.records[999], 'and is not added')
+ok(JSON.stringify(laptop) === before, 'the overrides passed in are not changed')
+const again = mergeIntoOverrides(m, local)
+ok(again.changes.length === 0, 'importing the same backup twice changes nothing')
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (fail) process.exit(1)

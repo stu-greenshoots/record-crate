@@ -78,8 +78,9 @@ export function buildRecord(item) {
   const key = artist?.id ? `id:${artist.id}` : nameKey
   const override =
     store.overrides.artists[key]?.sortName || store.overrides.artists[nameKey]?.sortName || null
-  const { sortName, basis, type } = deriveSortName(rawName, artistInfo, override)
   const record = store.overrides.records[String(item.instanceId)] || { shelf: 'main', position: null }
+  // A name corrected for this one record (from the phone) beats the artist's.
+  const { sortName, basis, type } = deriveSortName(rawName, artistInfo, record.sortName || override)
   const art = coverArt(item)
   const market = store.getMarket(item.releaseId)
   const detail = store.getRelease(item.releaseId)
