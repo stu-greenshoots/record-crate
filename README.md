@@ -11,15 +11,16 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
 
 ## Using it
 
-- **Find** — type an artist, album or catalogue number (`zep`, `k 50014`), or tap
-  *Point at a sleeve* and fill the square with the front cover. When it's sure, it
-  jumps straight to the record; when it isn't, tap the right one from the four
-  best guesses.
-- **The record page** — the big label is the cube (`K – M`), then where that cube
-  is ("Middle row, 2nd from left"), a close-up of the cube with the record's slot
-  lit, and the records either side of it that are still on the shelf. *Taking it
-  out* puts it on the Put back list. *Shelf* and *Filed as* fix a record that's
-  filed wrong — a sort-name fix can cover every record by that artist.
+- **The turntable** (home) — find a record by typing an artist, album or catalogue
+  number (`zep`, `k 50014`), or *Scan* and fill the square with the front cover.
+  It goes on the platter with its real centre label, and the records either side
+  of it on the shelf stand round it in a ring: spin the ring (or use the arrow
+  keys) to walk along the shelf. Above the platter (beside it, on a landscape
+  tablet) is where it goes: the cube, its place on the unit, and the records it
+  slots between. *Take it out* puts it on the Put back list. Below, *Shelf* and
+  *Filed as* fix a record that's filed wrong — a sort-name fix can cover every
+  record by that artist. With nothing on the platter, the ring holds what you
+  looked up last.
 - **Put back** — everything that's out, grouped by cube in walking order, each
   with the nearest record still on the shelf to slot it next to. Tick them off.
 - **Unit** — the whole unit drawn as spines coloured from the sleeves. Open a cube
@@ -30,7 +31,7 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
   (whole letters, you choose where each cube starts). *Shelves* renames shelves,
   adds new ones and picks which records stand on each.
 - **New records** — the app checks Discogs a few seconds after opening (at most
-  every six hours), and the record count on Find checks on demand.
+  every six hours); Settings checks on demand.
 
 What you do on the phone — what's out, ticks, layout, sort-name and shelf fixes —
 is saved on that phone.
@@ -74,9 +75,18 @@ desktop app in `server/` + `src/`).
 
 ```bash
 npm run sync       # Discogs -> data/ (collection, artists, master years, covers)
-npm run snapshot   # data/ -> public/data/collection.json, covers, embeddings, model
+npm run snapshot   # labels, then data/ -> public/data/collection.json, covers, embeddings, model
 npm run deploy     # build and publish to the gh-pages branch
 ```
+
+`snapshot` runs `npm run labels` first, which does only what's new: downloads new
+releases' Discogs photos (`data/label-src/`), embeds them, picks each one's label
+photo and crops it to `public/labels/<releaseId>.webp` (decisions in
+`data/labels.json`). How it picks, and how well, is in `identify/labels.py`; after
+changing the detector or `identify/tests/labels-truth.json`, measure with
+`.venv/bin/python -m identify.labels` and redo everything with
+`.venv/bin/python -m identify.labels --build --all`. A record with no label photo
+gets a plain printed label.
 
 `sync` needs the Discogs login in `data/auth.json` (made by connecting once through
 `npm run server`). Between snapshots, the app's own Discogs check files new purchases
@@ -100,10 +110,11 @@ app/          the phone app (React + TypeScript)
   discogs.ts    catching up with new purchases from the phone
 shared/       filing rules, shelf width/height, the unit layout solver — used by
               both the app and the scripts
-scripts/      export.mjs (snapshot), embed.mjs (recognition index), copy-ort.mjs
-public/       the snapshot, covers, model and service worker
+scripts/      export.mjs (snapshot), embed.mjs (recognition index), copy-ort.mjs,
+              fetch-label-photos.py + embed-label-photos.mjs (label sources)
+public/       the snapshot, covers, labels, model and service worker
 server/, src/ the original desktop app and Discogs sync (see HANDOVER.md)
-identify/     recognition experiments and measurements
+identify/     recognition experiments and measurements; labels.py (centre labels)
 ```
 
 ## Filing, briefly

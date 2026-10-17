@@ -29,6 +29,10 @@ function cachedImage(url) {
   return fs.existsSync(file) ? file : null
 }
 
+// Centre labels, cropped by identify/labels.py --build. Optional: without one the app
+// prints a plain label.
+const LABELS = path.join(OUT, 'labels')
+
 const records = allRecords()
 const jobs = []
 const out = records.map((r) => {
@@ -56,6 +60,7 @@ const out = records.map((r) => {
     addedAt: r.addedAt,
     cover,
     remoteCover: r.cover || r.thumb || null,
+    labelArt: fs.existsSync(path.join(LABELS, `${r.releaseId}.webp`)) ? `labels/${r.releaseId}.webp` : null,
   }
 })
 
@@ -85,4 +90,5 @@ const snapshot = {
 fs.writeFileSync(path.join(OUT, 'data', 'collection.json'), JSON.stringify(snapshot))
 
 const missing = out.filter((r) => !r.cover).length
-console.log(`${out.length} records, ${out.length - missing} covers (${missing} missing)`)
+const labelled = out.filter((r) => r.labelArt).length
+console.log(`${out.length} records, ${out.length - missing} covers (${missing} missing), ${labelled} labels`)
