@@ -460,51 +460,14 @@ body.typing .page {
 }
 
 /* ------------------------------------------------------------------ */
-/* Find                                                                */
+/* Search, results and the scan card                                  */
 /* ------------------------------------------------------------------ */
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0 18px;
-}
-
-.brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, var(--ink-900) 0 7%, var(--amber) 8% 30%, transparent 31%),
-    repeating-radial-gradient(circle, #141210 0 1.5px, #2a2622 1.5px 2.5px);
-  box-shadow: 0 0 0 1px var(--line-2);
-}
 
 .brand-name {
   font-family: var(--serif);
   font-size: 21px;
   font-weight: 600;
   letter-spacing: -0.01em;
-}
-
-.brand-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  padding: 8px 0 8px 8px;
-  color: var(--text-3);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.brand-count svg {
-  width: 15px;
-  height: 15px;
-}
-
-.brand-count.checking svg {
-  animation: spin 1s linear infinite;
 }
 
 .scan-card {
@@ -681,55 +644,6 @@ body.typing .page {
   border-color: transparent;
 }
 
-.out-banner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  margin-top: 16px;
-  padding: 14px;
-  border-radius: 16px;
-  background: var(--ink-820);
-  border: 1px solid var(--line-2);
-  cursor: pointer;
-}
-
-.out-banner > svg {
-  margin-left: auto;
-  color: var(--text-3);
-}
-
-.out-sleeves {
-  display: flex;
-  flex: none;
-}
-
-.out-sleeves .sleeve {
-  width: 40px;
-  margin-right: -16px;
-  border: 2px solid var(--ink-820);
-  border-radius: 5px;
-}
-
-.out-sleeves .sleeve:last-child {
-  margin-right: 0;
-}
-
-.out-text {
-  display: flex;
-  flex-direction: column;
-  padding-left: 6px;
-}
-
-.out-text strong {
-  font-weight: 600;
-}
-
-.out-text span {
-  color: var(--text-2);
-  font-size: 13.5px;
-}
-
 /* ------------------------------------------------------------------ */
 /* The unit                                                            */
 /* ------------------------------------------------------------------ */
@@ -738,11 +652,14 @@ body.typing .page {
   display: grid;
   gap: 5px;
   padding: 6px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #2f2822, #251f1a);
+  border-radius: 6px;
+  /* The stained-pine unit: grain running across the frame. */
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 3px, transparent 3px 11px),
+    linear-gradient(180deg, #8a5026, var(--pine));
   box-shadow:
     0 16px 34px -18px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .cube {
@@ -753,9 +670,9 @@ body.typing .page {
   aspect-ratio: 1;
   min-width: 0;
   padding: 4px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, #0d0c0b, #161411);
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.8);
+  border-radius: 2px;
+  background: linear-gradient(180deg, #1c1410, #2a1f18);
+  box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.75);
   overflow: hidden;
   transition:
     opacity 0.3s,
@@ -890,49 +807,8 @@ body.typing .page {
 }
 
 /* ------------------------------------------------------------------ */
-/* Record page                                                         */
+/* Where it goes, and the record's details                            */
 /* ------------------------------------------------------------------ */
-
-.record-hero {
-  display: flex;
-  gap: 18px;
-  align-items: flex-end;
-}
-
-.hero-sleeve {
-  width: 42%;
-  max-width: 220px;
-  border-radius: 6px;
-  box-shadow:
-    0 24px 44px -18px rgba(0, 0, 0, 0.95),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.record-id {
-  min-width: 0;
-  padding-bottom: 4px;
-}
-
-.record-id h1 {
-  font-family: var(--serif);
-  font-size: 25px;
-  font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: -0.012em;
-  overflow-wrap: anywhere;
-}
-
-.record-artist {
-  margin-top: 6px;
-  color: var(--text);
-  font-weight: 500;
-}
-
-.record-meta {
-  margin-top: 4px;
-  color: var(--text-3);
-  font-size: 13px;
-}
 
 .where {
   margin-top: 26px;
@@ -976,112 +852,6 @@ body.typing .page {
 
 .cube-zoom .strip {
   height: 92px;
-}
-
-.zoom-caption {
-  margin-top: 10px;
-  color: var(--text-2);
-  font-size: 14px;
-  text-align: center;
-}
-
-.zoom-caption strong {
-  color: var(--amber-2);
-}
-
-.sandwich {
-  list-style: none;
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sandwich-row,
-.sandwich-me {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 7px 10px;
-  border-radius: 10px;
-}
-
-.sandwich-row {
-  cursor: pointer;
-}
-
-.sandwich-row:active {
-  background: var(--ink-780);
-}
-
-.sandwich-me {
-  position: relative;
-  margin: 4px 0;
-  padding: 10px;
-  background: var(--amber-dim);
-  box-shadow: inset 0 0 0 1.5px rgba(224, 173, 72, 0.55);
-}
-
-.sandwich-me::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  border: 6px solid transparent;
-  border-left-color: var(--amber);
-  transform: translateY(-50%);
-}
-
-.sandwich-sleeve {
-  width: 40px;
-  box-shadow: 0 3px 10px -3px rgba(0, 0, 0, 0.7);
-}
-
-.sandwich-me .sandwich-sleeve {
-  width: 46px;
-}
-
-.sandwich-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.sandwich-title {
-  font-weight: 600;
-  font-size: 14.5px;
-  line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sandwich-sub {
-  color: var(--text-2);
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sandwich-me .sandwich-sub {
-  color: var(--amber);
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.sandwich-edge {
-  padding: 8px 10px;
-  color: var(--text-3);
-  font-size: 13px;
-  font-style: italic;
-}
-
-.record-actions {
-  margin-top: 18px;
 }
 
 .action-hint {
