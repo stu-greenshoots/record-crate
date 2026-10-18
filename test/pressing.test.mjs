@@ -8,30 +8,54 @@ const ok = (cond, label, extra = '') => {
 
 const lp = (descriptions, text = null) => [{ name: 'Vinyl', qty: '1', descriptions, text }]
 const rel = (o) => ({ year: null, released: null, country: null, formats: lp(['LP', 'Album']), ...o })
-const v = (released, country) => ({ released, country })
 
-// Abbey Road: dozens of countries in 1969, mostly with just a year.
-const abbey = [v('1969', 'Italy'), v('1969-09-26', 'UK'), v('1969', 'UK'), v('1969', 'US'), v('1970', 'Japan'), v('1987', 'UK')]
-let out = verdict(rel({ year: 1969, country: 'UK' }), abbey, 1969)
-ok(out.kind === 'original' && out.text === 'Original UK pressing', 'a first-year pressing is an original', JSON.stringify(out))
-ok(/2 UK pressings from 1969/.test(out.detail), 'says how many first-year pressings share its country', out.detail)
-ok(out.origin === 'UK', 'a full date settles which country was first')
+let nextId = 1000
+const v = (released, country, catno = 'X 1', id = nextId++) => ({ id, released, country, catno })
 
-out = verdict(rel({ year: 1969, country: 'Italy' }), abbey, 1969)
-ok(out.kind === 'original' && /very first release was in UK/.test(out.detail), 'a same-year pressing elsewhere is still original, and says where the first was', JSON.stringify(out))
+// Abbey Road: the main release is one variant of the first pressing; Discogs splits it.
+const abbey = [
+  v('1969', 'Italy', '3C 062-04243'),
+  v('1969-09-26', 'UK', 'PCS 7088', 2607424),
+  v('1969-09-26', 'UK', 'PCS 7088', 2498807),
+  v('1969', 'UK', 'PCS 7088, PCS-7088'),
+  v('1969', 'UK', 'PCS 7088', 555),
+  v('1969', 'Netherlands', '5C 062.04243'),
+  v('1987', 'UK', 'PCS 7088'),
+]
+const pcs = (o) => rel({ id: 2498807, year: 1969, country: 'UK', labels: [{ name: 'Apple', catno: 'PCS 7088' }], ...o })
+let out = verdict(rel({ id: 2607424, year: 1969, country: 'UK', labels: [{ catno: 'PCS 7088' }] }), abbey, 1969, 2607424)
+ok(out.kind === 'first' && out.text === 'First pressing' && !/Same country/.test(out.detail), 'the main release is the first pressing', JSON.stringify(out))
+ok(/4 variants/.test(out.detail), 'says how many variants share its catalogue number, country and year', out.detail)
 
-const yearsOnly = [v('1971', 'France'), v('1971', 'UK'), v('1971', 'UK')]
-out = verdict(rel({ year: 1971, country: 'UK' }), yearsOnly, 1971)
-ok(out.origin === null && !/very first/.test(out.detail || ''), "with only years, it doesn't guess which country was first", JSON.stringify(out))
+out = verdict(pcs(), abbey, 1969, 2607424)
+ok(out.kind === 'first' && /Same country, catalogue number and year as the first issue \(UK, PCS 7088, 1969\)/.test(out.detail), 'a variant of the first issue is a first pressing', JSON.stringify(out))
 
-out = verdict(rel({ year: 1963, country: 'UK', formats: lp(['LP', 'Album', 'Repress', 'Mono']) }), [v('1963-03-22', 'UK')], 1963)
-ok(out.kind === 'repress' && out.text === '1963 repress', 'a same-year repress is not the original')
+out = verdict(pcs({ labels: [{ catno: 'PCS-7088' }] }), abbey, 1969, 2607424)
+ok(out.kind === 'first', 'catalogue numbers match however they are punctuated')
+
+out = verdict(pcs({ formats: lp(['LP', 'Album', 'Repress']) }), abbey, 1969, 2607424)
+ok(out.kind === 'repress', 'a repress with the same catalogue number is not a first pressing')
+
+out = verdict(rel({ id: 9, year: 1969, country: 'Italy', labels: [{ catno: '3C 062-04243' }] }), abbey, 1969, 2607424)
+ok(out.kind === 'same-year' && out.text === '1969 Italy pressing' && /first issue \(UK, PCS 7088, 1969\)/.test(out.detail), 'the same year elsewhere is a same-year pressing', JSON.stringify(out))
+
+out = verdict(rel({ id: 9, year: 1969, country: 'UK', labels: [{ catno: 'PMC 7088' }] }), abbey, 1969, 2607424)
+ok(out.kind === 'same-year' && /not the same catalogue number/.test(out.detail), 'same year and country, different catalogue number', JSON.stringify(out))
+
+out = verdict(rel({ id: 9, year: 1971, country: 'UK', labels: [{ catno: 'PCS 7088' }] }), abbey, 1969, 2607424)
+ok(out.kind === 'reissue', 'the same catalogue number in a later year is not the first pressing')
+
+out = verdict(rel({ year: 1971, country: 'UK' }), [v('1971', 'France'), v('1971', 'UK'), v('1971', 'UK')], 1971)
+ok(out.kind === 'same-year' && /doesn't say which pressing came first/.test(out.detail), 'with no main release, a first-year pressing is not called first', JSON.stringify(out))
 
 out = verdict(rel({ year: 1972, country: 'UK', formats: lp(['LP', 'Album', 'Repress', 'Stereo']) }), [v('1969', 'UK'), v('1972', 'UK')], 1969)
 ok(out.kind === 'repress' && out.text === '1972 repress' && /first came out in 1969/.test(out.detail), 'a later repress says repress, not reissue', JSON.stringify(out))
 
-out = verdict(rel({ year: 1994, country: 'Ghana', formats: [{ name: 'Cassette', qty: '1', descriptions: [] }] }), [v('2015', 'US')], 1994)
-ok(out.kind === 'original' && out.text === 'Original Ghana cassette', 'a cassette original is a cassette, not a pressing', JSON.stringify(out))
+out = verdict(rel({ id: 77, year: 1994, country: 'Ghana', formats: [{ name: 'Cassette', qty: '1', descriptions: [] }] }), [v('2015', 'US')], 1994, 77)
+ok(out.kind === 'first' && out.text === 'Original cassette', 'a cassette original, the main release though not among the vinyl', JSON.stringify(out))
+
+out = verdict(rel({ year: 1963, country: 'UK', formats: lp(['LP', 'Album', 'Repress', 'Mono']) }), [v('1963-03-22', 'UK')], 1963)
+ok(out.kind === 'repress' && out.text === '1963 repress', 'a same-year repress is not the first')
 
 out = verdict(rel({ year: 1977, country: 'UK', formats: lp(['LP', 'Album', 'Reissue']) }), [v('1972', 'UK'), v('1977', 'UK')], 1972)
 ok(out.kind === 'reissue' && out.text === '1977 reissue' && /first came out in 1972/.test(out.detail), 'a later year is a reissue', JSON.stringify(out))
@@ -51,6 +75,12 @@ ok(out.origin === null, 'a date with no month or day is only a year', JSON.strin
 out = verdict(rel({ year: 1969, country: 'UK' }), [v('1968', 'UK'), v('1969', 'UK')], 1968)
 ok(out.kind === 'reissue', 'but not where that country already had it')
 
+out = verdict(rel({ year: 2011, country: 'Germany' }), [v('2011', 'Germany'), v('2011', 'US'), v('2016', 'Germany')], 2011, 999)
+ok(out.kind === 'first-vinyl' && /one of 2 that year/.test(out.detail), 'when the main release is a CD, first-year vinyl is the first vinyl pressing', JSON.stringify(out))
+
+out = verdict(rel({ year: 2016, country: 'Germany' }), [v('2011', 'Germany'), v('2016', 'Germany')], 2011, 999)
+ok(out.kind === 'reissue', 'but not later vinyl')
+
 out = verdict(rel({ year: 2015, country: 'UK' }), [v('2015', 'UK'), v('2020', 'UK')], 1995)
 ok(out.kind === 'first-vinyl' && /1995/.test(out.detail), 'the earliest vinyl of an older album is its first on vinyl', JSON.stringify(out))
 
@@ -60,14 +90,14 @@ ok(out.kind === 'unofficial', 'bootlegs are called out before anything else')
 out = verdict(rel({ year: null, country: 'France' }), [v('1974', 'France')], 1974)
 ok(out.kind === 'unknown', 'no year, no verdict')
 
-out = verdict(rel({ year: 1975, country: 'US', formats: lp(['LP', 'Album', 'Promo']) }), [v('1975', 'US')], 1975)
-ok(out.kind === 'original' && out.promo, 'a promo of the original is an original, marked promo')
+out = verdict(rel({ id: 5, year: 1975, country: 'US', formats: lp(['LP', 'Album', 'Promo']) }), [v('1975', 'US', 'X 1', 5)], 1975, 5)
+ok(out.kind === 'first' && out.promo, 'a promo of the first pressing is a first pressing, marked promo')
 
 out = verdict(rel({ year: 1994, country: 'Ghana' }), [], null)
-ok(out.kind === 'original' && out.versions === 0, 'an album with no other versions listed')
+ok(out.kind === 'first' && out.versions === 0, 'an album with no other versions listed')
 
 out = verdict(rel({ released: 'Mar 1978', country: 'US' }), [v('1978', 'US')], 1978)
-ok(out.kind === 'original', 'reads the year from a written-out release date')
+ok(out.kind === 'same-year', 'reads the year from a written-out release date')
 
 const winchester = {
   credits: [{ name: 'Bernie Grundman', role: 'Mastered By' }, { name: 'Ray Staff', role: 'Lacquer Cut By' }],

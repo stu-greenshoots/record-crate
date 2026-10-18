@@ -6,6 +6,9 @@
  *
  *   data/versions/<masterId>.json  every vinyl version of the album, oldest first
  *                                  (to tell an original pressing from a reissue)
+ *   data/main-releases.json        each album's Discogs main release, which their
+ *                                  guidelines make the original: what a first
+ *                                  pressing is measured against
  *   data/market.json               price suggestions and lowest price, per release
  *   data/mb/<artistId>.json        the artist's MusicBrainz release groups (album,
  *                                  live, compilation…) with their Discogs links, and
@@ -60,6 +63,21 @@ async function discogs() {
     if (++n % 25 === 0) console.log(`versions: ${n}/${masters.length}`)
   }
   console.log(`versions: ${masters.length} fetched`)
+
+  const MAIN = path.join(DATA_DIR, 'main-releases.json')
+  const main = fs.existsSync(MAIN) ? JSON.parse(fs.readFileSync(MAIN, 'utf8')) : {}
+  const unknown = [...new Set(items.map((i) => i.masterId).filter(Boolean))].filter((id) => !(id in main))
+  n = 0
+  for (const id of unknown) {
+    const m = await api(`/masters/${id}`)
+    main[id] = m?.main_release ?? null
+    if (++n % 50 === 0) {
+      writeAtomic(MAIN, main)
+      console.log(`main releases: ${n}/${unknown.length}`)
+    }
+  }
+  writeAtomic(MAIN, main)
+  console.log(`main releases: ${unknown.length} fetched`)
 
   const unpriced = [...new Set(items.map((i) => i.releaseId))].filter((id) => !store.market[id]?.suggestions)
   n = 0
@@ -169,5 +187,9 @@ async function musicbrainz() {
   console.log(`musicbrainz: ${todo.length} artists looked up`)
 }
 
+// The Discogs rate limiter's timer doesn't hold the process open by itself, so with
+// nothing else to wait on Node would exit mid-queue.
+const alive = setInterval(() => {}, 60_000)
 await Promise.all([discogs(), musicbrainz()])
+clearInterval(alive)
 process.exit(0)

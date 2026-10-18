@@ -29,14 +29,13 @@ function usePressing(releaseId: number) {
   return data
 }
 
-const FIRSTS: PressKind[] = ['original', 'first-local', 'first-vinyl']
+const FIRSTS: PressKind[] = ['first', 'first-vinyl']
 
 /** The short badge for a record's pressing, where it's one worth shouting about. */
 export function pressBadge(rec: Rec) {
-  if (!rec.press || !FIRSTS.includes(rec.press)) return null
-  if (rec.press === 'first-local') return `First ${rec.country} pressing`
-  if (rec.press === 'first-vinyl') return 'First on vinyl'
-  return 'Original pressing'
+  if (rec.press === 'first') return 'First pressing'
+  if (rec.press === 'first-vinyl') return 'First vinyl pressing'
+  return null
 }
 
 const money = (n: number | null, currency: string | null) =>

@@ -39,7 +39,7 @@ export function StatsView() {
       <div className="stat-tiles">
         <Tile n={s.records} label="records" />
         <Tile n={s.artists} label="artists" />
-        <Tile n={s.originals} label="original pressings" />
+        <Tile n={s.firsts} label="first pressings" />
         {s.value > 0 && <Tile n={money(s.value)} label={`at VG+ (${s.priced} priced)`} />}
       </div>
 
@@ -173,9 +173,10 @@ function Records({ list, sub }: { list: Rec[]; sub: (r: Rec) => string }) {
 }
 
 const VERDICTS: Record<string, string> = {
-  original: 'Original pressings',
+  first: 'First pressings',
+  'same-year': 'Same year, not the first',
   'first-local': 'First in their country',
-  'first-vinyl': 'First on vinyl',
+  'first-vinyl': 'First vinyl pressings',
   reissue: 'Reissues',
   repress: 'Represses',
   unofficial: 'Unofficial',
@@ -224,7 +225,7 @@ function compute(store: Derived) {
   return {
     records: recs.length,
     artists: artistIds.size,
-    originals: recs.filter((r) => r.press === 'original' || r.press === 'first-local' || r.press === 'first-vinyl').length,
+    firsts: recs.filter((r) => r.press === 'first').length,
     value: priced.reduce((t, r) => t + r.value!, 0),
     priced: priced.length,
     decades,

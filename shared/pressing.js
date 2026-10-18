@@ -17,23 +17,36 @@ function words(release) {
   return (release.formats || []).flatMap((f) => [...(f.descriptions || []), f.text || '']).join(' | ')
 }
 
+const catnos = (s) =>
+  String(s || '')
+    .split(',')
+    .map((c) => c.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+    .filter(Boolean)
+
 /**
  * The verdict on a release among its album's vinyl versions (oldest first, as
- * fetched), plus the album's original year where known.
+ * fetched), given the album's original year and Discogs' main release for it, which
+ * their guidelines make the original issue.
  *
- *   kind: original | first-local | first-vinyl | reissue | repress | unofficial | unknown
+ *   kind: first | same-year | first-local | first-vinyl | reissue | repress | unofficial | unknown
+ *
+ * A first pressing is the main release, or one with its country, catalogue number and
+ * year that isn't marked a repress: Discogs often splits a first pressing into
+ * variants (plants, label misprints) that collectors still call first pressings.
  */
-export function verdict(release, versions = [], albumYear = null) {
+export function verdict(release, versions = [], albumYear = null, mainId = null) {
   const said = words(release)
   const year = release.year || yearOf(release.released)
   const country = release.country || null
   const dated = versions.map((v) => ({ ...v, year: yearOf(v.released) })).filter((v) => v.year)
   const years = [...dated.map((v) => v.year), albumYear].filter(Boolean)
   const firstYear = years.length ? Math.min(...years) : null
-  // Only a full date says which country came first: most versions give just a year.
+  const main = mainId ? versions.find((v) => v.id === mainId) || null : null
+  // Without a main release, only a full date says which country came first: most
+  // versions give just a year.
   const exact = dated.filter((v) => /^\d{4}-\d\d-\d\d$/.test(v.released) && !v.released.endsWith('-00'))
   const earliest = exact.length ? exact.reduce((a, b) => (b.released < a.released ? b : a)) : null
-  const origin = earliest && earliest.year === firstYear ? earliest.country : null
+  const origin = main?.country || (earliest && earliest.year === firstYear ? earliest.country : null)
   const promo = /\bPromo\b/.test(said)
   const base = { firstYear, origin, promo, versions: versions.length }
 
@@ -42,10 +55,42 @@ export function verdict(release, versions = [], albumYear = null) {
 
   const reissued = /\bReissue\b/.test(said)
   const repressed = /\bRepress\b/.test(said)
+  const fresh = !reissued && !repressed
   const vinylBefore = dated.some((v) => v.year < year)
   const sameCountryBefore = dated.some((v) => v.country === country && v.year < year)
+  const mine = (release.labels || []).flatMap((l) => catnos(l.catno))
+  const mainYear = main ? yearOf(main.released) : null
+  const sameIssue =
+    main && fresh && country === main.country && year === mainYear && catnos(main.catno).some((c) => mine.includes(c))
+  const variants = main
+    ? dated.filter((v) => v.country === main.country && v.year === mainYear && catnos(v.catno).some((c) => catnos(main.catno).includes(c))).length
+    : 0
+  const issue = main ? `${main.country}, ${main.catno.split(',')[0].trim()}, ${mainYear}` : ''
 
-  if (!reissued && !repressed && dated.length && !vinylBefore && albumYear && albumYear < year) {
+  // The main release may not be vinyl (a cassette or CD original), so check it by id.
+  if ((mainId && release.id === mainId) || sameIssue) {
+    const notes = []
+    if (release.id !== mainId && issue) notes.push(`Same country, catalogue number and year as the first issue (${issue}).`)
+    if (variants > 1) notes.push(`Discogs lists ${variants} variants of it; the run-outs and label details tell the earliest.`)
+    const medium0 = release.formats?.[0]?.name
+    const text = !medium0 || medium0 === 'Vinyl' ? 'First pressing' : `Original ${medium0 === 'CD' ? 'CD' : medium0.toLowerCase()}`
+    return { ...base, kind: 'first', text, detail: notes.join(' ') || null }
+  }
+  // An album with no other versions on Discogs: this is the one.
+  if (!versions.length && fresh && (!albumYear || albumYear === year)) {
+    return { ...base, kind: 'first', text: 'First pressing', detail: null }
+  }
+  // The main release isn't vinyl (a CD-era album): the earliest vinyl is its first pressing.
+  if (fresh && mainId && !main && dated.length && !vinylBefore && (!albumYear || albumYear === year)) {
+    const alongside = dated.filter((v) => v.year === year).length
+    return {
+      ...base,
+      kind: 'first-vinyl',
+      text: 'First vinyl pressing',
+      detail: `The album's main issue on Discogs isn't vinyl; this is from the first year it was pressed on vinyl${alongside > 1 ? `, one of ${alongside} that year` : ''}.`,
+    }
+  }
+  if (fresh && dated.length && !vinylBefore && albumYear && albumYear < year) {
     return {
       ...base,
       kind: 'first-vinyl',
@@ -53,7 +98,7 @@ export function verdict(release, versions = [], albumYear = null) {
       detail: `The album came out in ${albumYear}; this was its first time on vinyl.`,
     }
   }
-  if (!reissued && !repressed && country && !sameCountryBefore && firstYear && year === firstYear + 1) {
+  if (fresh && country && country !== origin && !sameCountryBefore && firstYear && year === firstYear + 1) {
     return {
       ...base,
       kind: 'first-local',
@@ -61,35 +106,26 @@ export function verdict(release, versions = [], albumYear = null) {
       detail: `A year after the album first came out${origin ? ` in ${origin}` : ''} (${firstYear}).`,
     }
   }
+  const firstOut = firstYear ? `The album first came out in ${firstYear}${origin ? ` (${origin})` : ''}.` : null
   if (repressed && !reissued) {
-    return {
-      ...base,
-      kind: 'repress',
-      text: `${year} repress`,
-      detail: firstYear && year > firstYear ? `The album first came out in ${firstYear}${origin ? ` (${origin})` : ''}.` : null,
-    }
+    return { ...base, kind: 'repress', text: `${year} repress`, detail: firstYear && year > firstYear ? firstOut : null }
   }
   if (reissued || (firstYear && year > firstYear)) {
-    return {
-      ...base,
-      kind: 'reissue',
-      text: firstYear && year > firstYear ? `${year} reissue` : 'Reissue',
-      detail: firstYear && year > firstYear ? `The album first came out in ${firstYear}${origin ? ` (${origin})` : ''}.` : null,
-    }
+    return { ...base, kind: 'reissue', text: firstYear && year > firstYear ? `${year} reissue` : 'Reissue', detail: firstOut }
   }
 
-  const siblings = dated.filter((v) => v.year === year && v.country === country).length
-  const notes = []
-  if (origin && country && origin !== country) notes.push(`The very first release was in ${origin}.`)
-  if (siblings > 1) notes.push(`Discogs lists ${siblings} ${country} pressings from ${year}; the runouts tell them apart.`)
-  // Not everything here is vinyl: a cassette or CD original is a release, not a pressing.
+  // From the first year, but not the first issue.
   const medium = release.formats?.[0]?.name
   const noun = !medium || medium === 'Vinyl' ? 'pressing' : medium === 'CD' ? 'CD' : medium.toLowerCase()
   return {
     ...base,
-    kind: 'original',
-    text: country ? `Original ${country} ${noun}` : `Original ${noun}`,
-    detail: notes.join(' ') || null,
+    kind: 'same-year',
+    text: `${year} ${country ? `${country} ` : ''}${noun}`,
+    detail: main
+      ? country === main.country
+        ? `The same year as the first issue (${issue}), but not the same catalogue number.`
+        : `The same year as the first issue (${issue}).`
+      : `From the album's first year${origin && origin !== country ? `; the first release was in ${origin}` : ''}. Discogs doesn't say which pressing came first.`,
   }
 }
 

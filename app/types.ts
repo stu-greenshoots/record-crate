@@ -109,7 +109,7 @@ export interface Spot {
   after: Rec | null
 }
 
-export type PressKind = 'original' | 'first-local' | 'first-vinyl' | 'reissue' | 'repress' | 'unofficial' | 'unknown'
+export type PressKind = 'first' | 'same-year' | 'first-local' | 'first-vinyl' | 'reissue' | 'repress' | 'unofficial' | 'unknown'
 
 /** public/pressings/<releaseId>.json: everything known about one pressing. */
 export interface Pressing {

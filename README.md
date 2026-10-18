@@ -21,11 +21,14 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
   *Filed as* fix a record that's filed wrong — a sort-name fix can cover every
   record by that artist. With nothing on the platter, the ring holds what you
   looked up last.
-- **About this pressing** (on a record, under its details): original pressing or
-  reissue, worked out from every vinyl version of the album; where it was pressed and
-  cut; the run-out etchings, with a tick for the variant your copy has; how many
-  people have and want it, prices, and the Discogs notes. An original gets a badge on
-  the turntable.
+- **About this pressing** (on a record, under its details): first pressing or not.
+  A first pressing is Discogs' main release for the album (their guidelines make it
+  the original issue), or one with its country, catalogue number and year that isn't
+  marked a repress. Otherwise it's a same-year pressing, a reissue, a repress, the
+  first in its country or the first on vinyl. Also where it was pressed and cut; the
+  run-out etchings, with a tick for the variant your copy has; how many people have
+  and want it, prices, and the Discogs notes. A first pressing gets a badge on the
+  turntable.
 - **The dice** on the turntable puts a random record from the shelf on the platter.
   *Change* narrows what it picks from with the same choices as the Unit filter.
 - **Artist pages** — tap the artist's name. Their studio and live albums from

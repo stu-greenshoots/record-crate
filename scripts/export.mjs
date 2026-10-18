@@ -45,6 +45,7 @@ fs.mkdirSync(PRESSINGS, { recursive: true })
 const readJson = (file) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null)
 const round = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : null)
 const pressings = new Map()
+const mainReleases = readJson(path.join(DATA_DIR, 'main-releases.json')) || {}
 for (const r of records) {
   if (pressings.has(r.releaseId)) continue
   const detail = readJson(path.join(DATA_DIR, 'releases', `${r.releaseId}.json`))
@@ -53,7 +54,7 @@ for (const r of records) {
   const market = store.market[r.releaseId] || {}
   const suggestions = market.suggestions || {}
   const price = (k) => round(suggestions[k]?.value)
-  const press = versions ? verdict(detail, versions.versions, r.originalYear) : null
+  const press = versions ? verdict(detail, versions.versions, r.originalYear, mainReleases[r.masterId] ?? null) : null
   const file = {
     verdict: press,
     versionCount: versions?.total ?? null,
