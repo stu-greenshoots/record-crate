@@ -21,6 +21,19 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
   *Filed as* fix a record that's filed wrong — a sort-name fix can cover every
   record by that artist. With nothing on the platter, the ring holds what you
   looked up last.
+- **About this pressing** (on a record, under its details): original pressing or
+  reissue, worked out from every vinyl version of the album; where it was pressed and
+  cut; the run-out etchings, with a tick for the variant your copy has; how many
+  people have and want it, prices, and the Discogs notes. An original gets a badge on
+  the turntable.
+- **The dice** on the turntable puts a random record from the shelf on the platter.
+  *Change* narrows what it picks from with the same choices as the Unit filter.
+- **Artist pages** — tap the artist's name. Their studio and live albums from
+  MusicBrainz (compilations and EPs listed too), the ones you have lit up with where
+  they stand, the missing ones linked to Discogs, and members or bands to follow.
+- **Stats** — the collection by decade, genre, style, label, players, engineers,
+  producers, pressing, country and plant; rarest, most wanted, most valuable; artists
+  you have every album by. Tap a row to see those records lit on the unit.
 - **Put back** — everything that's out, grouped by cube in walking order, each
   with the nearest record still on the shelf to slot it next to. Tick them off.
 - **Unit** — the whole unit drawn as spines coloured from the sleeves. Open a cube
@@ -79,6 +92,7 @@ desktop app in `server/` + `src/`).
 
 ```bash
 npm run sync       # Discogs -> data/ (collection, artists, master years, covers)
+node scripts/fetch-details.mjs   # album versions, prices, MusicBrainz discographies
 npm run snapshot   # labels, then data/ -> public/data/collection.json, covers, embeddings, model
 npm run deploy     # build and publish to the gh-pages branch
 ```
@@ -91,6 +105,13 @@ changing the detector or `identify/tests/labels-truth.json`, measure with
 `.venv/bin/python -m identify.labels` and redo everything with
 `.venv/bin/python -m identify.labels --build --all`. A record with no label photo
 gets a plain printed label.
+
+`fetch-details.mjs` only fetches what's missing: each album's vinyl versions (for the
+pressing verdicts, `shared/pressing.js`), price suggestions, and each artist's
+MusicBrainz release groups and members (`shared/discography.js` matches them to your
+records). The first run takes a couple of hours, mostly MusicBrainz at one call a
+second; after that it's minutes. The export writes `public/pressings/` and
+`public/artists/`, one small file each, fetched by the phone when needed.
 
 The export also lists who's on each record, from the Discogs credits cached in
 `data/releases/` (`shared/credits.js` decides which roles count). Releases without

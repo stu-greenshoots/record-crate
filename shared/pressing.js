@@ -61,6 +61,14 @@ export function verdict(release, versions = [], albumYear = null) {
       detail: `A year after the album first came out${origin ? ` in ${origin}` : ''} (${firstYear}).`,
     }
   }
+  if (repressed && !reissued) {
+    return {
+      ...base,
+      kind: 'repress',
+      text: `${year} repress`,
+      detail: firstYear && year > firstYear ? `The album first came out in ${firstYear}${origin ? ` (${origin})` : ''}.` : null,
+    }
+  }
   if (reissued || (firstYear && year > firstYear)) {
     return {
       ...base,
@@ -69,16 +77,18 @@ export function verdict(release, versions = [], albumYear = null) {
       detail: firstYear && year > firstYear ? `The album first came out in ${firstYear}${origin ? ` (${origin})` : ''}.` : null,
     }
   }
-  if (repressed) return { ...base, kind: 'repress', text: `${year} repress`, detail: null }
 
   const siblings = dated.filter((v) => v.year === year && v.country === country).length
   const notes = []
   if (origin && country && origin !== country) notes.push(`The very first release was in ${origin}.`)
   if (siblings > 1) notes.push(`Discogs lists ${siblings} ${country} pressings from ${year}; the runouts tell them apart.`)
+  // Not everything here is vinyl: a cassette or CD original is a release, not a pressing.
+  const medium = release.formats?.[0]?.name
+  const noun = !medium || medium === 'Vinyl' ? 'pressing' : medium === 'CD' ? 'CD' : medium.toLowerCase()
   return {
     ...base,
     kind: 'original',
-    text: country ? `Original ${country} pressing` : 'Original pressing',
+    text: country ? `Original ${country} ${noun}` : `Original ${noun}`,
     detail: notes.join(' ') || null,
   }
 }

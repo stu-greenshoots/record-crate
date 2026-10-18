@@ -27,6 +27,12 @@ ok(out.origin === null && !/very first/.test(out.detail || ''), "with only years
 out = verdict(rel({ year: 1963, country: 'UK', formats: lp(['LP', 'Album', 'Repress', 'Mono']) }), [v('1963-03-22', 'UK')], 1963)
 ok(out.kind === 'repress' && out.text === '1963 repress', 'a same-year repress is not the original')
 
+out = verdict(rel({ year: 1972, country: 'UK', formats: lp(['LP', 'Album', 'Repress', 'Stereo']) }), [v('1969', 'UK'), v('1972', 'UK')], 1969)
+ok(out.kind === 'repress' && out.text === '1972 repress' && /first came out in 1969/.test(out.detail), 'a later repress says repress, not reissue', JSON.stringify(out))
+
+out = verdict(rel({ year: 1994, country: 'Ghana', formats: [{ name: 'Cassette', qty: '1', descriptions: [] }] }), [v('2015', 'US')], 1994)
+ok(out.kind === 'original' && out.text === 'Original Ghana cassette', 'a cassette original is a cassette, not a pressing', JSON.stringify(out))
+
 out = verdict(rel({ year: 1977, country: 'UK', formats: lp(['LP', 'Album', 'Reissue']) }), [v('1972', 'UK'), v('1977', 'UK')], 1972)
 ok(out.kind === 'reissue' && out.text === '1977 reissue' && /first came out in 1972/.test(out.detail), 'a later year is a reissue', JSON.stringify(out))
 
