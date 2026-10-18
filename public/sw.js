@@ -105,7 +105,7 @@ self.addEventListener('fetch', (event) => {
     }
     if (path.startsWith('data/')) return event.respondWith(staleWhileRevalidate(request, SHELL))
     if (/^(models|ort)\//.test(path)) return event.respondWith(cacheFirst(request, MODEL))
-    if (/^(covers|labels|pressings)\//.test(path)) return event.respondWith(staleWhileRevalidate(request, COVERS))
+    if (/^(covers|labels|pressings|artists)\//.test(path)) return event.respondWith(staleWhileRevalidate(request, COVERS))
     if (/\.(png|svg|webmanifest)$/.test(path)) return event.respondWith(staleWhileRevalidate(request, SHELL))
     return
   }

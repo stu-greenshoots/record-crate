@@ -7,8 +7,10 @@ import { OutView } from './components/OutView'
 import { CubeView, UnitView } from './components/UnitView'
 import { SettingsView } from './components/SettingsView'
 import { ShelfView } from './components/ShelfView'
+import { ArtistView } from './components/ArtistView'
+import { StatsView } from './components/StatsView'
 import { Toaster } from './components/Toast'
-import { CameraIcon, DiscIcon, ReturnIcon, UnitIcon } from './components/Icons'
+import { CameraIcon, DiscIcon, ReturnIcon, StatsIcon, UnitIcon } from './components/Icons'
 import { warmUp } from './recognise'
 
 /** If a screen throws, offer a way back rather than a blank page. */
@@ -73,7 +75,14 @@ function Screens() {
     )
   }
 
-  const tab = route.name === 'out' ? 'out' : ['unit', 'cube', 'settings', 'shelf'].includes(route.name) ? 'unit' : 'deck'
+  const tab =
+    route.name === 'out'
+      ? 'out'
+      : route.name === 'stats'
+        ? 'stats'
+        : ['unit', 'cube', 'settings', 'shelf'].includes(route.name)
+          ? 'unit'
+          : 'deck'
   const onDeck = route.name === 'find' || route.name === 'record'
   const outCount = store?.out.length || 0
 
@@ -88,6 +97,9 @@ function Screens() {
         {route.name === 'cube' && <CubeView index={route.index} />}
         {route.name === 'settings' && <SettingsView />}
         {route.name === 'shelf' && <ShelfView id={route.id} />}
+        {route.name === 'artist' && <ArtistView discogsId={route.id} />}
+        {route.name === 'mb' && <ArtistView mbid={route.id} />}
+        {route.name === 'stats' && <StatsView />}
       </main>
 
       <nav className="tabbar" aria-label="Sections">
@@ -109,6 +121,10 @@ function Screens() {
         <button type="button" className={tab === 'unit' ? 'on' : ''} onClick={() => go('unit', tab === 'unit')}>
           <UnitIcon />
           <span>Unit</span>
+        </button>
+        <button type="button" className={tab === 'stats' ? 'on' : ''} onClick={() => go('stats', tab === 'stats')}>
+          <StatsIcon />
+          <span>Stats</span>
         </button>
       </nav>
       <Toaster />

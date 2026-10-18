@@ -69,6 +69,8 @@ export interface Snapshot {
   shelfMap: ShelfMapConfig
   /** [name, roles], e.g. ["Steve Hillage", "guitar, producer"]. */
   people?: [string, string][]
+  /** Discogs artist id -> [studio have, studio total, live have, live total]. */
+  completeness?: Record<string, [number, number, number, number]>
   records: Rec[]
 }
 

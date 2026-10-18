@@ -12,3 +12,4 @@ dist-app/
 app/__test/
 public/ort/
 public/pressings/
+public/artists/

@@ -29,7 +29,7 @@ fs.mkdirSync(MB, { recursive: true })
 
 const VARIOUS = 194
 // Bump to fetch every artist again after changing what's asked for.
-const MB_VERSION = 2
+const MB_VERSION = 3
 const items = store.collection.items
 
 function writeAtomic(file, value) {
@@ -125,6 +125,10 @@ async function musicbrainz() {
           ended: Boolean(r.ended),
           roles: r.attributes || [],
         }))
+      // For a person, the bands they were in.
+      const bands = (artist?.relations || [])
+        .filter((r) => r.type === 'member of band' && r.direction === 'forward')
+        .map((r) => ({ mbid: r.artist.id, name: r.artist.name, begin: r.begin || null, end: r.end || null }))
       const groups = []
       for (let offset = 0; ; offset += 100) {
         const page = await mb(
@@ -152,6 +156,7 @@ async function musicbrainz() {
         mbid,
         type: artist?.type || null,
         members,
+        bands,
         groups,
         fetchedAt: Date.now(),
       })

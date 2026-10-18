@@ -111,3 +111,9 @@ export const DiceIcon = () => (
     <circle cx="15" cy="15" r="0.6" fill="currentColor" />
   </svg>
 )
+
+export const StatsIcon = () => (
+  <svg {...base}>
+    <path d="M5 20V11M10 20V5M15 20v-7M20 20V9" />
+  </svg>
+)

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getStore, moveManyToShelf, setSortName, useStore } from '../store'
 import type { Rec } from '../types'
 import { toast } from './Toast'
+import { go } from '../route'
 import { PressingSection } from './Pressing'
 
 /** What else there is to know or change about a record: its shelf, the name it's filed under. */
@@ -46,6 +47,12 @@ export function RecordDetails({ rec }: { rec: Rec }) {
         </span>
       </button>
       {sortOpen && <SortEditor rec={rec} onDone={() => setSortOpen(false)} />}
+      {rec.artistId && (
+        <button type="button" className="row-button" onClick={() => go(`artist/${rec.artistId}`)}>
+          <span>More by {rec.artist}</span>
+          <span className="row-value">Albums ›</span>
+        </button>
+      )}
       <dl className="facts">
         {rec.label && (
           <>

@@ -393,7 +393,13 @@ function About({ store, rec, wide, onRandom }: { store: Derived; rec: Rec; wide:
   return (
     <div className="about">
       <p className="eyebrow">
-        {rec.artist}
+        {rec.artistId ? (
+          <button type="button" className="artist-link" onClick={() => go(`artist/${rec.artistId}`)}>
+            {rec.artist}
+          </button>
+        ) : (
+          rec.artist
+        )}
         {!wide && yearOf(rec) ? ` · ${yearOf(rec)}` : ''}
       </p>
       <h1 className="about-title">{rec.title}</h1>

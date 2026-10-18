@@ -185,6 +185,8 @@ async function toRecord(item: any, filedAs: Map<string, string>): Promise<Rec> {
   return {
     id: item.instance_id,
     releaseId: b.id,
+    masterId: b.master_id || null,
+    artistId: primary?.id && primary.id !== 194 ? primary.id : null,
     title: String(b.title || '').trim(),
     artist: name,
     credit: artists.map((a: any) => a.anv || a.name).join(', '),

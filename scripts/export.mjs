@@ -16,6 +16,7 @@ import { store } from '../server/store.js'
 import { allRecords } from '../server/records.js'
 import { collectPeople } from '../shared/credits.js'
 import { cutters, noteParts, physical, runouts, verdict } from '../shared/pressing.js'
+import { discography } from '../shared/discography.js'
 
 const OUT = path.join(ROOT, 'public')
 const COVERS = path.join(OUT, 'covers')
@@ -123,6 +124,29 @@ const out = records.map((r) => {
   }
 })
 
+// Artist pages: each artist's albums from MusicBrainz (fetch-details.mjs), matched
+// against the collection on the phone. Members link to their own page where there is one.
+const ARTISTS = path.join(OUT, 'artists')
+fs.mkdirSync(ARTISTS, { recursive: true })
+const MB = path.join(DATA_DIR, 'mb')
+const mbFiles = fs.existsSync(MB) ? fs.readdirSync(MB).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join(MB, f))) : []
+const discogsOf = new Map(mbFiles.filter((a) => a.mbid).map((a) => [a.mbid, a.discogsId]))
+let artistPages = 0
+for (const a of mbFiles) {
+  if (!a.mbid) continue
+  const page = {
+    discogsId: a.discogsId,
+    mbid: a.mbid,
+    name: a.name.replace(/\s+\(\d+\)$/, ''),
+    type: a.type,
+    members: a.members.map((m) => ({ ...m, discogsId: discogsOf.get(m.mbid) || null })),
+    bands: (a.bands || []).map((b) => ({ ...b, discogsId: discogsOf.get(b.mbid) || null })),
+    groups: a.groups.map(({ id, title, date, primary, secondary, masters }) => ({ id, title, date, primary, secondary, masters })),
+  }
+  fs.writeFileSync(path.join(ARTISTS, `${a.discogsId}.json`), JSON.stringify(page))
+  artistPages++
+}
+
 function pressFields(p) {
   if (!p) return {}
   const plant = p.physical.find((f) => f.startsWith('Pressed by '))
@@ -151,6 +175,16 @@ for (const r of out) {
   if (r.cover) r.colour = colours[path.join(OUT, r.cover)] || null
 }
 
+// How complete each artist is, for the stats page (the artist page works it out live).
+const completeness = {}
+for (const a of mbFiles) {
+  if (!a.mbid) continue
+  const mine = out.filter((r) => r.artistId === a.discogsId)
+  if (!mine.length) continue
+  const { counts } = discography(a.groups, mine)
+  completeness[a.discogsId] = [counts.album.have, counts.album.total, counts.live.have, counts.live.total]
+}
+
 const snapshot = {
   exportedAt: new Date().toISOString(),
   syncedAt: store.collection.syncedAt,
@@ -158,6 +192,7 @@ const snapshot = {
   shelves: store.overrides.shelves,
   shelfMap: store.overrides.shelfMap,
   people,
+  completeness,
   records: out,
 }
 fs.writeFileSync(path.join(OUT, 'data', 'collection.json'), JSON.stringify(snapshot))
@@ -170,3 +205,4 @@ console.log(`${people.length} people credited, ${nobody} records with nobody lis
 const verdicts = {}
 for (const r of out) verdicts[r.press || 'no detail'] = (verdicts[r.press || 'no detail'] || 0) + 1
 console.log(`pressings: ${JSON.stringify(verdicts)}`)
+console.log(`artist pages: ${artistPages} (of ${new Set(out.map((r) => r.artistId).filter(Boolean)).size} artists)`)
