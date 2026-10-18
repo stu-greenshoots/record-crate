@@ -9,7 +9,9 @@ import { Sleeve } from './Sleeve'
 import { RecordLabel } from './Label'
 import { SearchPanel } from './SearchPanel'
 import { RecordDetails } from './RecordDetails'
-import { CameraIcon, CheckIcon, ReturnIcon, SearchIcon } from './Icons'
+import { pressBadge } from './Pressing'
+import { CameraIcon, CheckIcon, DiceIcon, ReturnIcon, SearchIcon } from './Icons'
+import { RandomBar, RandomSheet, pickRandom } from './Random'
 import { toast } from './Toast'
 
 /**
@@ -35,6 +37,7 @@ export function TurntableView({ id }: { id: number | null }) {
   const store = useStore()
   const wide = useWide()
   const [searching, setSearching] = useState(false)
+  const [randomOpen, setRandomOpen] = useState(false)
 
   useEffect(() => {
     if (id == null) return
@@ -56,9 +59,17 @@ export function TurntableView({ id }: { id: number | null }) {
       <span className="brand-name">Record Crate</span>
       {store.out.length > 0 && (
         <button type="button" className="pill pill-oxblood" onClick={() => go('out')}>
-          {store.out.length} to put back
+          {store.out.length} out
         </button>
       )}
+      <button
+        type="button"
+        className="round-btn"
+        aria-label="Pick a random record"
+        onClick={() => pickRandom(store, rec?.id ?? null) || setRandomOpen(true)}
+      >
+        <DiceIcon />
+      </button>
       {!wide && (
         <button type="button" className="round-btn" aria-label="Find a record" onClick={() => setSearching(true)}>
           <SearchIcon />
@@ -67,7 +78,7 @@ export function TurntableView({ id }: { id: number | null }) {
     </header>
   )
   const about = rec ? (
-    <About store={store} rec={rec} wide={wide} />
+    <About store={store} rec={rec} wide={wide} onRandom={() => setRandomOpen(true)} />
   ) : id != null ? (
     <p className="empty-note">That record isn't in the collection any more.</p>
   ) : (
@@ -85,6 +96,7 @@ export function TurntableView({ id }: { id: number | null }) {
           {about}
           {rec && <RecordDetails rec={rec} />}
         </aside>
+        {randomOpen && <RandomSheet store={store} current={rec?.id ?? null} onClose={() => setRandomOpen(false)} />}
       </div>
     )
   }
@@ -105,6 +117,7 @@ export function TurntableView({ id }: { id: number | null }) {
           <SearchPanel autoFocus onPick={pick} onClose={() => setSearching(false)} />
         </div>
       )}
+      {randomOpen && <RandomSheet store={store} current={rec?.id ?? null} onClose={() => setRandomOpen(false)} />}
     </div>
   )
 }
@@ -362,7 +375,7 @@ const Chevron = ({ up = false }: { up?: boolean }) => (
 /* What's on the platter, and where it goes                            */
 /* ------------------------------------------------------------------ */
 
-function About({ store, rec, wide }: { store: Derived; rec: Rec; wide: boolean }) {
+function About({ store, rec, wide, onRandom }: { store: Derived; rec: Rec; wide: boolean; onRandom: () => void }) {
   const spot = store.spots.get(rec.id)
   const isOut = Boolean(store.local.out[rec.id])
   const shelfName = store.shelves.find((s) => s.id === rec.shelf)?.name || rec.shelf
@@ -384,6 +397,8 @@ function About({ store, rec, wide }: { store: Derived; rec: Rec; wide: boolean }
         {!wide && yearOf(rec) ? ` · ${yearOf(rec)}` : ''}
       </p>
       <h1 className="about-title">{rec.title}</h1>
+      {pressBadge(rec) && <p className="press-badge">{pressBadge(rec)}</p>}
+      <RandomBar store={store} rec={rec} onChange={onRandom} />
       {wide && <p className="about-meta">{[yearOf(rec), rec.format, rec.catno].filter(Boolean).join(' · ')}</p>}
 
       {spot ? (

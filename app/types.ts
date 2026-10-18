@@ -23,6 +23,16 @@ export interface Rec {
   labelArt?: string | null
   /** Who plays on, engineers or produces it: [index into Snapshot.people, kinds]. */
   people?: [number, number][]
+  masterId?: number | null
+  artistId?: number | null
+  /** Where this pressing was made, and what the versions say about it. */
+  country?: string | null
+  press?: PressKind | null
+  have?: number | null
+  want?: number | null
+  /** Suggested price at VG+, in the snapshot's currency. */
+  value?: number | null
+  plant?: string | null
   /** Pulled in from Discogs after the snapshot was taken. */
   fresh?: boolean
 }
@@ -95,4 +105,40 @@ export interface Spot {
   index: number
   before: Rec | null
   after: Rec | null
+}
+
+export type PressKind = 'original' | 'first-local' | 'first-vinyl' | 'reissue' | 'repress' | 'unofficial' | 'unknown'
+
+/** public/pressings/<releaseId>.json: everything known about one pressing. */
+export interface Pressing {
+  verdict: {
+    kind: PressKind
+    text: string
+    detail?: string | null
+    firstYear: number | null
+    origin: string | null
+    promo: boolean
+    versions: number
+  } | null
+  versionCount: number | null
+  released: string | null
+  country: string | null
+  labels: { name: string; catno: string }[]
+  physical: string[]
+  cutters: string[]
+  runouts: { variant: number | null; sides: { value: string; side: string }[] }[]
+  notes: { text: string; href?: string }[]
+  have: number | null
+  want: number | null
+  rating: { count: number; average: number } | null
+  value: {
+    currency: string | null
+    mint: number | null
+    nearMint: number | null
+    vgPlus: number | null
+    vg: number | null
+    lowest: number | null
+    forSale: number | null
+  }
+  uri: string
 }

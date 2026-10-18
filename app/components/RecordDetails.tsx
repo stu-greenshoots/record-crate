@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getStore, moveManyToShelf, setSortName, useStore } from '../store'
 import type { Rec } from '../types'
 import { toast } from './Toast'
+import { PressingSection } from './Pressing'
 
 /** What else there is to know or change about a record: its shelf, the name it's filed under. */
 export function RecordDetails({ rec }: { rec: Rec }) {
@@ -52,12 +53,6 @@ export function RecordDetails({ rec }: { rec: Rec }) {
             <dd>{rec.label}</dd>
           </>
         )}
-        {rec.year && rec.originalYear && rec.year !== rec.originalYear && (
-          <>
-            <dt>This pressing</dt>
-            <dd>{rec.year}</dd>
-          </>
-        )}
         {rec.styles?.length > 0 && (
           <>
             <dt>Style</dt>
@@ -71,6 +66,7 @@ export function RecordDetails({ rec }: { rec: Rec }) {
           </>
         )}
       </dl>
+      <PressingSection rec={rec} />
       <a className="discogs-link" href={`https://www.discogs.com/release/${rec.releaseId}`} target="_blank" rel="noreferrer">
         View on Discogs ↗
       </a>

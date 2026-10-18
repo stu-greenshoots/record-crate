@@ -31,6 +31,8 @@ export interface Local {
   gone: number[]
   /** Cube index -> ids confirmed in place, for the organise pass. */
   sorted: Record<string, number[]>
+  /** id -> the runout variant you've checked your copy against (0: the only one). */
+  runoutOf: Record<string, number>
   lastCheck: string | null
 }
 
@@ -274,6 +276,14 @@ export function toggleSorted(cube: number, id: number) {
     if (list.has(id)) list.delete(id)
     else list.add(id)
     l.sorted[cube] = [...list]
+  })
+}
+
+export function setRunout(id: number, variant: number | null) {
+  update((l) => {
+    l.runoutOf = { ...l.runoutOf }
+    if (variant == null) delete l.runoutOf[id]
+    else l.runoutOf[id] = variant
   })
 }
 

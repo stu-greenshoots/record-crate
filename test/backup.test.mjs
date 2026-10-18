@@ -26,6 +26,7 @@ const local = {
   fresh: [],
   gone: [55],
   sorted: { 0: [101, 7], 3: [12] },
+  runoutOf: { 101: 2 },
   lastCheck: null,
 }
 

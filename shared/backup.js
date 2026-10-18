@@ -18,6 +18,7 @@ export const EMPTY_LOCAL = {
   fresh: [],
   gone: [],
   sorted: {},
+  runoutOf: {},
   lastCheck: null,
 }
 

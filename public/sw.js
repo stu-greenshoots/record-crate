@@ -8,7 +8,7 @@
  *     shows up the first time the app opens after a deploy
  *   - the recognition index: served from cache, refreshed behind
  *   - the vector file: named by its content hash, so cache-first is safe
- *   - covers and labels: served from cache, refreshed behind
+ *   - covers, labels and pressing notes: served from cache, refreshed behind
  *   - the model and the ONNX runtime: cache-first, in a cache named after their
  *     versions, so an upgrade fetches them again and nothing else does
  *
@@ -105,7 +105,7 @@ self.addEventListener('fetch', (event) => {
     }
     if (path.startsWith('data/')) return event.respondWith(staleWhileRevalidate(request, SHELL))
     if (/^(models|ort)\//.test(path)) return event.respondWith(cacheFirst(request, MODEL))
-    if (path.startsWith('covers/') || path.startsWith('labels/')) return event.respondWith(staleWhileRevalidate(request, COVERS))
+    if (/^(covers|labels|pressings)\//.test(path)) return event.respondWith(staleWhileRevalidate(request, COVERS))
     if (/\.(png|svg|webmanifest)$/.test(path)) return event.respondWith(staleWhileRevalidate(request, SHELL))
     return
   }

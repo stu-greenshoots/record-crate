@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { EMPTY_FILTER, counts, toggle } from '../../shared/filter.js'
-import { setFilter, type Filter, type Kind } from '../filter'
+import type { Filter, Kind } from '../filter'
 import { fold } from '../search'
 import { yearOf } from '../where'
 import type { Derived } from '../store'
@@ -28,19 +28,23 @@ function yearText(f: Filter) {
 export function FilterBar({
   store,
   filter,
+  onChange,
   matched,
   pool,
+  counted = true,
 }: {
   store: Derived
   filter: Filter
+  onChange: (f: Filter) => void
   matched: Set<number> | null
   /** What the typed words leave, for the choices to count against. */
   pool: Rec[]
+  /** Say how many records match and in how many cubes (the Unit tab). */
+  counted?: boolean
 }) {
   const [sheet, setSheet] = useState<Sheet | null>(null)
-  const base = store.snapshot.exportedAt
   const people = store.snapshot.people || []
-  const set = (f: Filter) => setFilter(f, base)
+  const set = onChange
 
   const chosen: { key: string; text: string; drop: () => void }[] = []
   for (const kind of ['genres', 'styles', 'labels', 'people'] as Kind[]) {
@@ -107,7 +111,9 @@ export function FilterBar({
           <p className="filter-summary">
             {matched.size === 0
               ? 'Nothing matches all of these.'
-              : `${matched.size} record${matched.size === 1 ? '' : 's'} in ${cubes} cube${cubes === 1 ? '' : 's'}`}
+              : counted
+                ? `${matched.size} record${matched.size === 1 ? '' : 's'} in ${cubes} cube${cubes === 1 ? '' : 's'}`
+                : ''}
             <button type="button" className="link-btn" onClick={() => set(EMPTY_FILTER as Filter)}>
               Clear
             </button>

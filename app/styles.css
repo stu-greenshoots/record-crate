@@ -1716,6 +1716,7 @@ body.typing .page {
 
 .deck-head .brand-name {
   margin-right: auto;
+  white-space: nowrap;
   font-style: italic;
   font-weight: 500;
   font-size: 24px;
@@ -1723,6 +1724,7 @@ body.typing .page {
 
 .pill {
   height: 40px;
+  white-space: nowrap;
   padding: 0 15px;
   border-radius: 20px;
   font-weight: 600;
@@ -2507,4 +2509,247 @@ body.typing .page {
 
 .match-group .results {
   padding-left: 10px;
+}
+
+/* ------------------------------------------------------------------ */
+/* About this pressing                                                 */
+/* ------------------------------------------------------------------ */
+
+.press-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--amber);
+  color: var(--amber-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pressing-loading {
+  margin-top: 22px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+.press-verdict {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--ink-820);
+  border: 1px solid var(--line-2);
+}
+
+.press-verdict.first {
+  border-color: var(--amber);
+  background: var(--amber-dim);
+}
+
+.press-verdict-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.press-verdict.first .press-verdict-text {
+  color: var(--amber-2);
+}
+
+.press-verdict-detail {
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.press-tag {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--amber);
+  color: #1d1306;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+.press-facts,
+.press-cutters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  list-style: none;
+}
+
+.press-facts li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink-820);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.press-cutters {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.press-cutters li {
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.press-cutters li::before {
+  content: '◉ ';
+  color: var(--amber);
+}
+
+.press-sub {
+  margin: 20px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.press-hint {
+  color: var(--text-3);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.runout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.runout-sides {
+  flex: 1;
+  min-width: 0;
+}
+
+.runout-variant {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.runout-side {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.runout-side code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 13.5px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.runout-side span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.runout.mine code {
+  color: var(--amber-2);
+}
+
+.runout .tick {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.mine-note {
+  margin-top: 8px;
+  color: var(--amber-2);
+}
+
+.press-market {
+  margin-top: 20px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.press-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 8px 0 6px;
+}
+
+.press-prices b {
+  color: var(--text-hi);
+  font-size: 17px;
+}
+
+.press-notes p {
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.press-notes a {
+  color: var(--amber-2);
+}
+
+.press-notes.clipped p {
+  max-height: 9.5em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent);
+  mask-image: linear-gradient(180deg, #000 60%, transparent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Random pick                                                         */
+/* ------------------------------------------------------------------ */
+
+.random-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 13.5px;
+}
+
+.random-bar > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--amber);
+}
+
+.random-bar > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.random-bar .link-btn {
+  margin-left: auto;
+}
+
+.random-bar .chip {
+  padding: 5px 12px;
+}
+
+.random-go {
+  width: 100%;
+  margin-top: 22px;
 }

@@ -15,6 +15,7 @@ import { ROOT, DATA_DIR } from '../server/config.js'
 import { store } from '../server/store.js'
 import { allRecords } from '../server/records.js'
 import { collectPeople } from '../shared/credits.js'
+import { cutters, noteParts, physical, runouts, verdict } from '../shared/pressing.js'
 
 const OUT = path.join(ROOT, 'public')
 const COVERS = path.join(OUT, 'covers')
@@ -35,6 +36,50 @@ function cachedImage(url) {
 const LABELS = path.join(OUT, 'labels')
 
 const records = allRecords()
+
+// What's known about each pressing: a small file per release, fetched when a record
+// is opened, plus a few fields in the snapshot for the stats.
+const PRESSINGS = path.join(OUT, 'pressings')
+fs.mkdirSync(PRESSINGS, { recursive: true })
+const readJson = (file) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null)
+const round = (n) => (typeof n === 'number' ? Math.round(n * 100) / 100 : null)
+const pressings = new Map()
+for (const r of records) {
+  if (pressings.has(r.releaseId)) continue
+  const detail = readJson(path.join(DATA_DIR, 'releases', `${r.releaseId}.json`))
+  if (!detail) continue
+  const versions = r.masterId ? readJson(path.join(DATA_DIR, 'versions', `${r.masterId}.json`)) : { total: 0, versions: [] }
+  const market = store.market[r.releaseId] || {}
+  const suggestions = market.suggestions || {}
+  const price = (k) => round(suggestions[k]?.value)
+  const press = versions ? verdict(detail, versions.versions, r.originalYear) : null
+  const file = {
+    verdict: press,
+    versionCount: versions?.total ?? null,
+    released: detail.released || null,
+    country: detail.country || null,
+    labels: (detail.labels || []).map((l) => ({ name: l.name.replace(/\s+\(\d+\)$/, ''), catno: l.catno })),
+    physical: physical(detail),
+    cutters: cutters(detail),
+    runouts: runouts(detail),
+    notes: noteParts(detail.notes),
+    have: detail.community?.have ?? null,
+    want: detail.community?.want ?? null,
+    rating: detail.community?.rating || null,
+    value: {
+      currency: Object.values(suggestions)[0]?.currency || market.stats?.lowest_price?.currency || null,
+      mint: price('Mint (M)'),
+      nearMint: price('Near Mint (NM or M-)'),
+      vgPlus: price('Very Good Plus (VG+)'),
+      vg: price('Very Good (VG)'),
+      lowest: round(market.stats?.lowest_price?.value),
+      forSale: market.stats?.num_for_sale ?? null,
+    },
+    uri: detail.uri || `https://www.discogs.com/release/${r.releaseId}`,
+  }
+  fs.writeFileSync(path.join(PRESSINGS, `${r.releaseId}.json`), JSON.stringify(file))
+  pressings.set(r.releaseId, file)
+}
 
 // Players, engineers and producers from the cached Discogs credits, for the filter.
 const RELEASES = path.join(DATA_DIR, 'releases')
@@ -71,9 +116,25 @@ const out = records.map((r) => {
     cover,
     remoteCover: r.cover || r.thumb || null,
     people: byRelease[r.releaseId] || [],
+    masterId: r.masterId || null,
+    artistId: r.artistId || null,
+    ...pressFields(pressings.get(r.releaseId)),
     labelArt: fs.existsSync(path.join(LABELS, `${r.releaseId}.webp`)) ? `labels/${r.releaseId}.webp` : null,
   }
 })
+
+function pressFields(p) {
+  if (!p) return {}
+  const plant = p.physical.find((f) => f.startsWith('Pressed by '))
+  return {
+    country: p.country,
+    press: p.verdict?.kind || null,
+    have: p.have,
+    want: p.want,
+    value: p.value.vgPlus ?? null,
+    plant: plant ? plant.slice('Pressed by '.length) : null,
+  }
+}
 
 // Resize in one Python pass (Pillow is already in the venv) and sample each sleeve's
 // average colour for its spine on the way through.
@@ -106,3 +167,6 @@ const labelled = out.filter((r) => r.labelArt).length
 const nobody = out.filter((r) => !r.people.length).length
 console.log(`${out.length} records, ${out.length - missing} covers (${missing} missing), ${labelled} labels`)
 console.log(`${people.length} people credited, ${nobody} records with nobody listed`)
+const verdicts = {}
+for (const r of out) verdicts[r.press || 'no detail'] = (verdicts[r.press || 'no detail'] || 0) + 1
+console.log(`pressings: ${JSON.stringify(verdicts)}`)

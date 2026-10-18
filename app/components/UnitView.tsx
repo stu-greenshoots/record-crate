@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { resetSorted, toggleSorted, useStore } from '../store'
-import { useMatches } from '../filter'
+import { unitFilter, useMatches } from '../filter'
 import { FilterBar } from './FilterBar'
 import { back, go } from '../route'
 import { cubePlace, ordinal, yearOf } from '../where'
@@ -18,7 +18,8 @@ export function UnitView() {
 
 function Unit({ store }: { store: NonNullable<ReturnType<typeof useStore>> }) {
   const { built, byId } = store
-  const { filter, matched, pool } = useMatches(store.records, store.snapshot.exportedAt)
+  const filter = unitFilter.use(store.snapshot.exportedAt)
+  const { matched, pool } = useMatches(store.records, filter)
   const hits = (ids: number[]) => (matched ? ids.filter((id) => matched.has(id)).length : 0)
   const badges = matched ? Object.fromEntries(built.slots.map((c) => [c.index, hits(c.instanceIds)])) : {}
   const outIds = new Set(store.out.map((r) => r.id))
@@ -39,7 +40,7 @@ function Unit({ store }: { store: NonNullable<ReturnType<typeof useStore>> }) {
         {built.unplaced.length ? ` · ${built.unplaced.length} with nowhere to go` : ''}
       </p>
 
-      <FilterBar store={store} filter={filter} matched={matched} pool={pool} />
+      <FilterBar store={store} filter={filter} onChange={(f) => unitFilter.set(f, store.snapshot.exportedAt)} matched={matched} pool={pool} />
 
       <UnitMap
         built={built}
@@ -138,7 +139,7 @@ export function CubeView({ index }: { index: number }) {
 
 function CubePage({ store, index }: { store: NonNullable<ReturnType<typeof useStore>>; index: number }) {
   const { built, byId } = store
-  const { matched } = useMatches(store.records, store.snapshot.exportedAt)
+  const { matched } = useMatches(store.records, unitFilter.use(store.snapshot.exportedAt))
   const [only, setOnly] = useState(false)
   const firstMatch = useRef<HTMLLIElement>(null)
   // Arriving from a filtered unit: take you to the first match in the list.
