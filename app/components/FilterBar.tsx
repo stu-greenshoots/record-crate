@@ -4,6 +4,7 @@ import { setFilter, type Filter, type Kind } from '../filter'
 import { fold } from '../search'
 import { yearOf } from '../where'
 import type { Derived } from '../store'
+import type { Rec } from '../types'
 import { CheckIcon, CloseIcon, SearchIcon } from './Icons'
 
 type Sheet = Kind | 'year'
@@ -28,10 +29,13 @@ export function FilterBar({
   store,
   filter,
   matched,
+  pool,
 }: {
   store: Derived
   filter: Filter
   matched: Set<number> | null
+  /** What the typed words leave, for the choices to count against. */
+  pool: Rec[]
 }) {
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const base = store.snapshot.exportedAt
@@ -56,6 +60,27 @@ export function FilterBar({
 
   return (
     <div className="filter-bar">
+      <div className="search-box">
+        <SearchIcon />
+        <input
+          type="search"
+          inputMode="search"
+          enterKeyHint="search"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-label="Find on the unit"
+          placeholder="Artist, album or catalogue no."
+          value={filter.text}
+          onChange={(e) => set({ ...filter, text: e.target.value })}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+        {filter.text && (
+          <button type="button" className="icon-btn small" aria-label="Clear" onClick={() => set({ ...filter, text: '' })}>
+            <CloseIcon />
+          </button>
+        )}
+      </div>
       <div className="filter-kinds" role="group" aria-label="Filter by">
         {(Object.keys(NAMES) as Sheet[]).map((k) => {
           const n = k === 'year' ? (yearText(filter) ? 1 : 0) : filter[k].length
@@ -69,14 +94,16 @@ export function FilterBar({
       </div>
       {matched && (
         <>
-          <div className="filter-chosen">
-            {chosen.map((c) => (
-              <button key={c.key} type="button" className="filter-chip" onClick={c.drop} aria-label={`Remove ${c.text}`}>
-                {c.text}
-                <CloseIcon />
-              </button>
-            ))}
-          </div>
+          {chosen.length > 0 && (
+            <div className="filter-chosen">
+              {chosen.map((c) => (
+                <button key={c.key} type="button" className="filter-chip" onClick={c.drop} aria-label={`Remove ${c.text}`}>
+                  {c.text}
+                  <CloseIcon />
+                </button>
+              ))}
+            </div>
+          )}
           <p className="filter-summary">
             {matched.size === 0
               ? 'Nothing matches all of these.'
@@ -101,7 +128,7 @@ export function FilterBar({
           {sheet === 'year' ? (
             <YearPicker store={store} filter={filter} set={set} />
           ) : (
-            <Options store={store} filter={filter} kind={sheet} set={set} />
+            <Options store={store} pool={pool} filter={filter} kind={sheet} set={set} />
           )}
         </div>
       )}
@@ -109,11 +136,23 @@ export function FilterBar({
   )
 }
 
-function Options({ store, filter, kind, set }: { store: Derived; filter: Filter; kind: Kind; set: (f: Filter) => void }) {
+function Options({
+  store,
+  pool,
+  filter,
+  kind,
+  set,
+}: {
+  store: Derived
+  pool: Rec[]
+  filter: Filter
+  kind: Kind
+  set: (f: Filter) => void
+}) {
   const [query, setQuery] = useState('')
   const q = fold(useDeferredValue(query))
   const people = store.snapshot.people || []
-  const n = useMemo(() => counts(store.records, filter, kind) as Map<string | number, number>, [store.records, filter, kind])
+  const n = useMemo(() => counts(pool, filter, kind) as Map<string | number, number>, [pool, filter, kind])
 
   const options = useMemo(() => {
     const picked = new Set<string | number>(filter[kind])
@@ -127,6 +166,15 @@ function Options({ store, filter, kind, set }: { store: Derived; filter: Filter;
     // Thousands of people: the ones on most records until you type a name.
     return list.slice(0, kind === 'people' && !q ? 60 : 300).map((v) => ({ v, name: name(v) }))
   }, [n, q, kind, filter, people])
+
+  if (kind === 'people' && !people.length) {
+    return (
+      <p className="empty-note">
+        This copy of the collection was saved before people were added. Close the app and open it again (with a
+        signal) to fetch the new one.
+      </p>
+    )
+  }
 
   return (
     <>

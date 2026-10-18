@@ -1126,6 +1126,7 @@ body.typing .page {
 
 .cube-row-count {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   gap: 4px;
   margin-left: auto;
@@ -2487,4 +2488,8 @@ body.typing .page {
 .order-item.match .order-n {
   color: var(--amber-2);
   font-weight: 700;
+}
+
+.filter-bar .search-box {
+  margin-bottom: 12px;
 }

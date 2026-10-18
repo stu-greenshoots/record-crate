@@ -1,8 +1,11 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { EMPTY_FILTER, isEmpty, matches } from '../shared/filter.js'
+import { search } from './search'
 import type { Rec } from './types'
 
 export interface Filter {
+  /** Typed words: artist, album, label, year or catalogue number. */
+  text: string
   genres: string[]
   styles: string[]
   labels: string[]
@@ -57,14 +60,18 @@ export function useFilter(base: string): Filter {
   return s.base === base || !s.filter.people.length ? s.filter : { ...s.filter, people: [] }
 }
 
-/** The records the filter lets through, or null when there's no filter. */
+/**
+ * The records the filter lets through, or null when there's no filter, and the pool
+ * the typed words leave for the other choices to narrow (and count) further.
+ */
 export function useMatches(records: Rec[], base: string) {
   const filter = useFilter(base)
+  const pool = useMemo(() => (filter.text.trim() ? search(records, filter.text, Infinity) : records), [records, filter.text])
   // Keyed on the content: a filter with its people dropped is a new object each time.
   const key = JSON.stringify(filter)
   const matched = useMemo(
-    () => (isEmpty(filter) ? null : new Set(records.filter((r) => matches(r, filter)).map((r) => r.id))),
-    [records, key],
+    () => (isEmpty(filter) ? null : new Set(pool.filter((r) => matches(r, filter)).map((r) => r.id))),
+    [pool, key],
   )
-  return { filter, matched }
+  return { filter, matched, pool }
 }

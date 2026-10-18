@@ -141,7 +141,9 @@ let loadError: string | null = null
 
 export async function load() {
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`)
+    // GitHub Pages lets the browser reuse a copy for ten minutes; ask it to check, so
+    // the first open after a deploy gets the new snapshot.
+    const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`, { cache: 'no-cache' })
     if (!res.ok) throw new Error(`Couldn't load the collection (${res.status})`)
     snapshot = await res.json()
     loadError = null

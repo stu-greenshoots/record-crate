@@ -25,7 +25,8 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
   with the nearest record still on the shelf to slot it next to. Tick them off.
 - **Unit** — the whole unit drawn as spines coloured from the sleeves. Open a cube
   for its records in shelf order, with a checklist for sorting the real shelf to
-  match. Filter by genre, style, year, label or people (anyone credited with
+  match. Type to find (artist, album, catalogue number), and filter by genre,
+  style, year, label or people (anyone credited with
   playing on, engineering or producing a record): the matches glow on the shelves,
   each cube shows how many it holds, and a cube opens at its first match. More than
   one choice of a kind means any of them; different kinds must all hold. *Settings* (the cog) changes the unit's size, cube capacity and what each

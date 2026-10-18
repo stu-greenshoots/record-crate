@@ -18,7 +18,7 @@ export function UnitView() {
 
 function Unit({ store }: { store: NonNullable<ReturnType<typeof useStore>> }) {
   const { built, byId } = store
-  const { filter, matched } = useMatches(store.records, store.snapshot.exportedAt)
+  const { filter, matched, pool } = useMatches(store.records, store.snapshot.exportedAt)
   const hits = (ids: number[]) => (matched ? ids.filter((id) => matched.has(id)).length : 0)
   const badges = matched ? Object.fromEntries(built.slots.map((c) => [c.index, hits(c.instanceIds)])) : {}
   const outIds = new Set(store.out.map((r) => r.id))
@@ -39,7 +39,7 @@ function Unit({ store }: { store: NonNullable<ReturnType<typeof useStore>> }) {
         {built.unplaced.length ? ` · ${built.unplaced.length} with nowhere to go` : ''}
       </p>
 
-      <FilterBar store={store} filter={filter} matched={matched} />
+      <FilterBar store={store} filter={filter} matched={matched} pool={pool} />
 
       <UnitMap
         built={built}

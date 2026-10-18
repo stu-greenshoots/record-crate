@@ -29,9 +29,9 @@ self.addEventListener('install', (event) => {
       const html = await res.clone().text()
       await cache.put('./', res)
       const assets = [...new Set(html.match(/assets\/[^"')\s]+/g) || [])]
+      await cache.add(new Request('data/collection.json', { cache: 'no-cache' }))
       await cache.addAll([
         ...assets,
-        'data/collection.json',
         'data/embeddings.json',
         'manifest.webmanifest',
         'icon.svg',

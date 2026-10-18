@@ -17,7 +17,7 @@ const f = (o) => ({ ...EMPTY_FILTER, ...o })
 const ids = (filter) => records.filter((r) => matches(r, filter)).map((r) => r.id).join(',')
 
 ok(ids(EMPTY_FILTER) === '1,2,3,4', 'no filter, everything')
-ok(isEmpty(EMPTY_FILTER) && !isEmpty(f({ from: 1970 })) && !isEmpty(f({ people: [0] })), 'knows when nothing is chosen')
+ok(isEmpty(EMPTY_FILTER) && !isEmpty(f({ from: 1970 })) && !isEmpty(f({ people: [0] })) && !isEmpty(f({ text: 'gong' })), 'knows when nothing is chosen')
 ok(ids(f({ styles: ['Prog Rock'] })) === '1,3', 'one style')
 ok(ids(f({ genres: ['Rock', 'Electronic'] })) === '1,3,4', 'two genres: either will do')
 ok(ids(f({ genres: ['Jazz'], labels: ['Virgin'] })) === '3', 'genre and label: both must hold')

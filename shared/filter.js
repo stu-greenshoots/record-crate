@@ -2,19 +2,21 @@
  * Narrowing the collection by what's on the records. Within one kind any choice will
  * do (Prog Rock or Jazz); across kinds every one must hold (and from 1970–75).
  *
- *   filter: { genres: [], styles: [], labels: [], people: [personIndex], from, to }
+ *   filter: { text, genres: [], styles: [], labels: [], people: [personIndex], from, to }
+ *
+ * `text` is typed words, matched by the app's own search before these run.
  *
  * The year is the original release year where Discogs has one, else the pressing's.
  */
 
 export const KINDS = ['genres', 'styles', 'labels', 'people']
 
-export const EMPTY_FILTER = { genres: [], styles: [], labels: [], people: [], from: null, to: null }
+export const EMPTY_FILTER = { text: '', genres: [], styles: [], labels: [], people: [], from: null, to: null }
 
 export const yearOf = (rec) => rec.originalYear || rec.year || null
 
 export function isEmpty(f) {
-  return KINDS.every((k) => !f[k].length) && f.from == null && f.to == null
+  return !f.text && KINDS.every((k) => !f[k].length) && f.from == null && f.to == null
 }
 
 function valuesOf(rec, kind) {
