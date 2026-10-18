@@ -798,6 +798,20 @@ body.typing .page {
   opacity: 0.18;
 }
 
+.unit.filtering .spines i:not(.match),
+.strip.filtering i:not(.match):not(.focus) {
+  opacity: 0.2;
+}
+
+.spines i.match,
+.strip i.match {
+  position: relative;
+  z-index: 1;
+  min-width: 2px;
+  background: var(--amber-2) !important;
+  box-shadow: 0 0 6px 1px var(--amber-glow);
+}
+
 .unit.compact {
   margin: 14px 0 0;
 }
@@ -2242,4 +2256,235 @@ body.typing .page {
   .mini-unit i.target {
     animation: none;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Filtering the unit                                                  */
+/* ------------------------------------------------------------------ */
+
+.filter-bar {
+  margin: -6px 0 16px;
+}
+
+.filter-kinds {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 2px 16px;
+}
+
+.filter-kinds::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chosen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 5px 8px 5px 11px;
+  border-radius: 999px;
+  background: var(--amber-dim);
+  color: var(--amber-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-chip svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.filter-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.filter-summary .link-btn {
+  margin-left: auto;
+}
+
+.filter-sheet {
+  background: var(--ink-900);
+}
+
+.filter-sheet > * {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.filter-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.filter-sheet-head h2 {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.filter-sheet-count {
+  color: var(--text-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-sheet-head .btn {
+  margin-left: auto;
+}
+
+.filter-sheet .hint-note {
+  padding: 10px 2px 4px;
+  font-size: 13.5px;
+}
+
+.filter-options {
+  list-style: none;
+  margin-top: 6px;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+}
+
+.filter-option:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.filter-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.filter-option-name {
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-option.on .filter-option-name {
+  color: var(--amber-2);
+  font-weight: 600;
+}
+
+.filter-option-sub {
+  color: var(--text-3);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-option-count {
+  color: var(--text-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-option-tick {
+  display: inline-flex;
+  width: 20px;
+  color: var(--amber-2);
+}
+
+.filter-option-tick svg {
+  width: 18px;
+  height: 18px;
+}
+
+.year-range {
+  display: flex;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.year-range label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.year-range input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: var(--ink-820);
+  color: var(--text);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.year-range input:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+
+.cube-row-count b {
+  color: var(--amber-2);
+  font-weight: 700;
+}
+
+.cube-matches {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: var(--amber-2);
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.cube-matches .chip {
+  margin-left: auto;
+}
+
+.order-item.unmatched {
+  opacity: 0.4;
+}
+
+.order-item.match .order-n {
+  color: var(--amber-2);
+  font-weight: 700;
 }

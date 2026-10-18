@@ -21,6 +21,8 @@ export interface Rec {
   colour?: string | null
   /** The centre label, cropped to its circle, where a photo of it was found. */
   labelArt?: string | null
+  /** Who plays on, engineers or produces it: [index into Snapshot.people, kinds]. */
+  people?: [number, number][]
   /** Pulled in from Discogs after the snapshot was taken. */
   fresh?: boolean
 }
@@ -55,6 +57,8 @@ export interface Snapshot {
   username: string
   shelves: Shelf[]
   shelfMap: ShelfMapConfig
+  /** [name, roles], e.g. ["Steve Hillage", "guitar, producer"]. */
+  people?: [string, string][]
   records: Rec[]
 }
 

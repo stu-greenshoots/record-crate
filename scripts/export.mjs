@@ -14,6 +14,7 @@ import { execFileSync } from 'node:child_process'
 import { ROOT, DATA_DIR } from '../server/config.js'
 import { store } from '../server/store.js'
 import { allRecords } from '../server/records.js'
+import { collectPeople } from '../shared/credits.js'
 
 const OUT = path.join(ROOT, 'public')
 const COVERS = path.join(OUT, 'covers')
@@ -34,6 +35,15 @@ function cachedImage(url) {
 const LABELS = path.join(OUT, 'labels')
 
 const records = allRecords()
+
+// Players, engineers and producers from the cached Discogs credits, for the filter.
+const RELEASES = path.join(DATA_DIR, 'releases')
+const { people, byRelease } = collectPeople(
+  [...new Set(records.map((r) => r.releaseId))]
+    .map((id) => path.join(RELEASES, `${id}.json`))
+    .filter((f) => fs.existsSync(f))
+    .map((f) => JSON.parse(fs.readFileSync(f, 'utf8'))),
+)
 const jobs = []
 const out = records.map((r) => {
   // The full 600px cover beats the 150px thumb for matching a photo against.
@@ -60,6 +70,7 @@ const out = records.map((r) => {
     addedAt: r.addedAt,
     cover,
     remoteCover: r.cover || r.thumb || null,
+    people: byRelease[r.releaseId] || [],
     labelArt: fs.existsSync(path.join(LABELS, `${r.releaseId}.webp`)) ? `labels/${r.releaseId}.webp` : null,
   }
 })
@@ -85,10 +96,13 @@ const snapshot = {
   username: store.collection.username,
   shelves: store.overrides.shelves,
   shelfMap: store.overrides.shelfMap,
+  people,
   records: out,
 }
 fs.writeFileSync(path.join(OUT, 'data', 'collection.json'), JSON.stringify(snapshot))
 
 const missing = out.filter((r) => !r.cover).length
 const labelled = out.filter((r) => r.labelArt).length
+const nobody = out.filter((r) => !r.people.length).length
 console.log(`${out.length} records, ${out.length - missing} covers (${missing} missing), ${labelled} labels`)
+console.log(`${people.length} people credited, ${nobody} records with nobody listed`)

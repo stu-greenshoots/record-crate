@@ -154,22 +154,24 @@ export function CubeStrip({
   capacity,
   focus,
   marked,
+  matched,
 }: {
   cubeIds: number[]
   byId: Map<number, Rec>
   capacity: number
   focus?: number
   marked?: Set<number>
+  matched?: Set<number> | null
 }) {
   return (
-    <div className="strip">
+    <div className={`strip ${matched ? 'filtering' : ''}`}>
       {cubeIds.map((cid) => {
         const r = byId.get(cid)
         if (!r) return null
         return (
           <i
             key={cid}
-            className={`${cid === focus ? 'focus' : ''} ${marked?.has(cid) ? 'marked' : ''}`}
+            className={`${cid === focus ? 'focus' : ''} ${marked?.has(cid) ? 'marked' : ''} ${matched?.has(cid) ? 'match' : ''}`}
             style={{
               width: `${(r.width / capacity) * 100}%`,
               height: `${Math.min(1, r.height) * 100}%`,

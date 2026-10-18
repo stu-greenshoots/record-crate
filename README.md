@@ -25,7 +25,10 @@ phone, and nothing needs a server. Add it to the home screen and it works offlin
   with the nearest record still on the shelf to slot it next to. Tick them off.
 - **Unit** — the whole unit drawn as spines coloured from the sleeves. Open a cube
   for its records in shelf order, with a checklist for sorting the real shelf to
-  match. *Settings* (the cog) changes the unit's size, cube capacity and what each
+  match. Filter by genre, style, year, label or people (anyone credited with
+  playing on, engineering or producing a record): the matches glow on the shelves,
+  each cube shows how many it holds, and a cube opens at its first match. More than
+  one choice of a kind means any of them; different kinds must all hold. *Settings* (the cog) changes the unit's size, cube capacity and what each
   cube holds, and how the A–Z run is split: *Evenly* (balanced, a letter may run
   into the next cube), *Fill up* (each cube full before the next) or *By letter*
   (whole letters, you choose where each cube starts). *Shelves* renames shelves,
@@ -88,6 +91,10 @@ changing the detector or `identify/tests/labels-truth.json`, measure with
 `.venv/bin/python -m identify.labels --build --all`. A record with no label photo
 gets a plain printed label.
 
+The export also lists who's on each record, from the Discogs credits cached in
+`data/releases/` (`shared/credits.js` decides which roles count). Releases without
+cached credits are counted in the export log.
+
 `sync` needs the Discogs login in `data/auth.json` (made by connecting once through
 `npm run server`). Between snapshots, the app's own Discogs check files new purchases
 on the phone using the same rules (the public collection API needs no login). The
@@ -98,7 +105,7 @@ camera learns their sleeves at the next snapshot.
 ```bash
 npm install
 npm run dev        # http://localhost:5178 — the phone app
-npm test           # filing rules, shelf layout, catalogue-number matching
+npm test           # filing rules, shelf layout, matching, backups, credits, filters
 npm run build      # -> dist-app/
 ```
 
@@ -106,9 +113,11 @@ npm run build      # -> dist-app/
 app/          the phone app (React + TypeScript)
   store.ts      snapshot + on-phone state, where every record stands
   search.ts     type-to-find
+  filter.ts     the Unit tab's filter (the matching itself is shared/filter.js)
   recognise*.ts the sleeve recogniser and its worker
   discogs.ts    catching up with new purchases from the phone
-shared/       filing rules, shelf width/height, the unit layout solver — used by
+shared/       filing rules, shelf width/height, the unit layout solver, credits
+              and filtering — used by
               both the app and the scripts
 scripts/      export.mjs (snapshot), embed.mjs (recognition index), copy-ort.mjs,
               fetch-label-photos.py + embed-label-photos.mjs (label sources)
