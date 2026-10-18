@@ -2493,3 +2493,18 @@ body.typing .page {
 .filter-bar .search-box {
   margin-bottom: 12px;
 }
+
+.match-group {
+  margin-bottom: 14px;
+}
+
+.match-group .cube-row {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ink-900);
+}
+
+.match-group .results {
+  padding-left: 10px;
+}

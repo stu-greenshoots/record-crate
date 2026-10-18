@@ -115,20 +115,26 @@ async function run(onProgress: (p: CheckProgress) => void) {
   const filedAs = new Map<string, string>()
   for (const r of store.records) filedAs.set(cleanArtistName(r.artist).toLowerCase(), r.sortName)
 
+  const inSnapshot = new Set(store.snapshot.records.map((r) => r.id))
+  update((l) => {
+    l.fresh = l.fresh.filter((r) => live.has(r.id) && !inSnapshot.has(r.id))
+    l.gone = gone
+  })
+
+  // Each record is saved as soon as it's filed: a few hundred milliseconds of work
+  // waits seconds on the rate limit, and a check cut short (the phone locked, the
+  // app closed) should keep what it got. The next check carries on from there.
   const fresh: Rec[] = []
   for (const [n, item] of incoming.entries()) {
     onProgress({ stage: 'Filing new records', done: n, total: incoming.length })
-    fresh.push(await toRecord(item, filedAs))
+    const rec = await toRecord(item, filedAs)
+    fresh.push(rec)
+    update((l) => {
+      l.fresh = [...l.fresh.filter((r) => r.id !== rec.id), rec]
+    })
   }
 
   update((l) => {
-    const inSnapshot = new Set(store.snapshot.records.map((r) => r.id))
-    const byId = new Map<number, Rec>()
-    for (const r of [...l.fresh, ...fresh]) {
-      if (live.has(r.id) && !inSnapshot.has(r.id)) byId.set(r.id, r)
-    }
-    l.fresh = [...byId.values()]
-    l.gone = gone
     l.lastCheck = new Date().toISOString()
   })
   return { added: fresh, gone: gone.length }

@@ -3,7 +3,7 @@ import { resetSorted, toggleSorted, useStore } from '../store'
 import { useMatches } from '../filter'
 import { FilterBar } from './FilterBar'
 import { back, go } from '../route'
-import { cubePlace, yearOf } from '../where'
+import { cubePlace, ordinal, yearOf } from '../where'
 import { UnitMap } from './UnitMap'
 import { CubeStrip } from './RecordDetails'
 import { BackIcon, CheckIcon, ChevronIcon, GearIcon } from './Icons'
@@ -51,33 +51,72 @@ function Unit({ store }: { store: NonNullable<ReturnType<typeof useStore>> }) {
         onCube={(i) => go(`unit/${i}`)}
       />
 
-      <h3 className="section-title">{matched ? 'Cubes with matches' : 'Cubes'}</h3>
-      <ul className="cube-list">
-        {built.slots.map((c) => {
-          if (matched && !badges[c.index]) return null
-          const done = (store.local.sorted[c.index] || []).filter((id) => c.instanceIds.includes(id)).length
-          return (
-            <li key={c.index}>
-              <button type="button" className="cube-row" onClick={() => go(`unit/${c.index}`)}>
-                <span className="cube-row-label">{c.label}</span>
-                <span className="cube-row-place">{cubePlace(c, built)}</span>
-                {matched ? (
+      {matched ? (
+        <>
+          <h3 className="section-title">Where they are</h3>
+          {built.slots.map((c) => {
+            if (!badges[c.index]) return null
+            return (
+              <section key={c.index} className="match-group">
+                <button type="button" className="cube-row" onClick={() => go(`unit/${c.index}`)}>
+                  <span className="cube-row-label">{c.label}</span>
+                  <span className="cube-row-place">{cubePlace(c, built)}</span>
                   <span className="cube-row-count">
                     <b>{badges[c.index]}</b>&nbsp;of {c.count}
                   </span>
-                ) : (
-                  <span className={`cube-row-count ${c.over ? 'over' : ''}`}>
-                    {done > 0 && done < c.count ? `${done}/` : ''}
-                    {c.count}
-                    {done >= c.count && c.count > 0 && <CheckIcon />}
-                  </span>
-                )}
-                <ChevronIcon />
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+                  <ChevronIcon />
+                </button>
+                <ul className="results">
+                  {c.instanceIds.map((id, i) => {
+                    const r = matched.has(id) ? byId.get(id) : null
+                    if (!r) return null
+                    return (
+                      <li key={id}>
+                        <button type="button" className="result" onClick={() => go(`r/${id}`)}>
+                          <Sleeve rec={r} className="result-sleeve" />
+                          <span className="result-text">
+                            <span className="result-title">{r.title}</span>
+                            <span className="result-artist">
+                              {r.artist}
+                              {yearOf(r) ? ` · ${yearOf(r)}` : ''}
+                            </span>
+                          </span>
+                          <span className={`cube-chip ${outIds.has(id) ? 'out' : ''}`}>
+                            {outIds.has(id) ? 'Out' : `${ordinal(i + 1)} in`}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )
+          })}
+        </>
+      ) : (
+        <>
+          <h3 className="section-title">Cubes</h3>
+          <ul className="cube-list">
+            {built.slots.map((c) => {
+              const done = (store.local.sorted[c.index] || []).filter((id) => c.instanceIds.includes(id)).length
+              return (
+                <li key={c.index}>
+                  <button type="button" className="cube-row" onClick={() => go(`unit/${c.index}`)}>
+                    <span className="cube-row-label">{c.label}</span>
+                    <span className="cube-row-place">{cubePlace(c, built)}</span>
+                    <span className={`cube-row-count ${c.over ? 'over' : ''}`}>
+                      {done > 0 && done < c.count ? `${done}/` : ''}
+                      {c.count}
+                      {done >= c.count && c.count > 0 && <CheckIcon />}
+                    </span>
+                    <ChevronIcon />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
       {!matched && sortedCubes > 0 && (
         <p className="hint-note">
           {sortedCubes} of {built.slots.length} cubes checked in order.
