@@ -205,4 +205,4 @@ console.log(`${people.length} people credited, ${nobody} records with nobody lis
 const verdicts = {}
 for (const r of out) verdicts[r.press || 'no detail'] = (verdicts[r.press || 'no detail'] || 0) + 1
 console.log(`pressings: ${JSON.stringify(verdicts)}`)
-console.log(`artist pages: ${artistPages} (of ${new Set(out.map((r) => r.artistId).filter(Boolean)).size} artists)`)
+console.log(`artist pages: ${artistPages} (main and featured artists)`)
