@@ -1,145 +1,131 @@
 """
-Reading the deadwax.
+Reading the deadwax, by asking a model that can actually see.
 
 Runout etchings are the worst text a camera will ever hand to OCR: hand-scratched,
 curved around the label, lit at whatever angle made the vinyl stop reflecting the
-ceiling. Tesseract was trained on none of that. So this module spends its effort
-before the OCR call — a ladder of preprocessing variants, each a different guess
-at what will make the etching look like print — and treats agreement between
-variants as the real confidence signal, because tesseract's own output offers none.
+ceiling. Tesseract — trained on flat scanned pages — proved hopeless on them, so
+this reader hands the photo to Claude vision instead and asks for the etchings
+verbatim, triangles and stamper marks included.
 
-A read here is a list of candidate strings, never an answer. Matching them against
-Discogs' matrix identifiers is the job of shared/pressingMatch.js, which knows that
-'YEX 637-2' and 'YEX637-2' are the same etching.
+A read here is still candidates, never an answer. Matching them against Discogs'
+matrix identifiers remains the job of shared/pressingMatch.js.
+
+Needs ANTHROPIC_API_KEY — from the environment, or from the project .env (the Node
+server keeps .env parsed to itself rather than exporting it, so the key wouldn't
+reach this child process otherwise). See .env.example.
 """
 
 from __future__ import annotations
 
-import re
-import cv2
-import numpy as np
+import base64
+import json
+import os
+from pathlib import Path
 
-from .text import _ocr
+MODEL = "claude-sonnet-5-5"
 
-# An etching worth keeping: at least four characters drawn from the alphabet
-# matrix numbers actually use. Lowercase appears only when tesseract has
-# misread artwork, so the pattern insists on upper case and digits.
-ETCHING = re.compile(r"[A-Z0-9][A-Z0-9 \-./#Δ]{3,}")
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "raw_text": {"type": "string"},
+        "side_a_matrix": {"type": ["string", "null"]},
+        "side_b_matrix": {"type": ["string", "null"]},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+        "notes": {"type": "string"},
+    },
+    "required": ["raw_text", "side_a_matrix", "side_b_matrix", "confidence", "notes"],
+    "additionalProperties": False,
+}
 
-# Characters that never appear in a matrix number but tesseract loves to emit
-# when it hallucinates on vinyl grain.
-JUNK = re.compile(r"[^A-Z0-9 \-./#]")
+PROMPT = (
+    "You are reading the etched dead wax (runout groove) of a vinyl record. "
+    "Return a JSON object. Preserve all glyphs exactly — including triangles "
+    "(∇, △), mastering engineer stamps, inspection marks, and special characters. "
+    "Distinguish matrix characters precisely (O vs 0, I vs 1 vs lowercase L, "
+    "S vs 5). If both side A and side B are visible, split them. If only one "
+    "side is visible, use null for the other. Confidence: 'high' if clearly "
+    "etched and well-lit, 'medium' if some ambiguity, 'low' if partially "
+    "illegible. Put everything you can read verbatim in raw_text, and any "
+    "observations about lighting, visibility, or specific marks in notes."
+)
 
+MEDIA_TYPES = {".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"}
 
-def _greyscale(image: np.ndarray) -> np.ndarray:
-    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    return cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(grey)
-
-
-def _variants(grey: np.ndarray):
-    """
-    The preprocessing ladder, mildest first.
-
-    Each rung is one idea about what the photo got wrong: contrast (CLAHE is
-    already applied), polarity (etchings read light-on-dark as often as not),
-    and binarisation (adaptive for uneven lamp light, Otsu for even light).
-    Rotation is handled a level up, because it multiplies everything here.
-    """
-    yield "clahe", grey
-    yield "inverted", cv2.bitwise_not(grey)
-    yield "adaptive", cv2.adaptiveThreshold(
-        grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10
-    )
-    _, otsu = cv2.threshold(grey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    yield "otsu", otsu
-    yield "otsu-inverted", cv2.bitwise_not(otsu)
-
-
-def _candidates_in(raw: str) -> list[str]:
-    found = []
-    for line in raw.upper().splitlines():
-        line = JUNK.sub(" ", line)
-        for match in ETCHING.findall(line):
-            cleaned = " ".join(match.split())
-            # A string that is mostly spaces or one repeated glyph is grain, not text.
-            if len(set(cleaned.replace(" ", ""))) >= 3:
-                found.append(cleaned)
-    return found
+# The matcher downstream compares strings; it never sees these labels. They only
+# shape what the UI and smoke script display, mirroring the old reader's numbers.
+CONFIDENCE = {"high": 0.9, "medium": 0.6, "low": 0.3}
 
 
-def _plausibility(value: str) -> float:
-    """
-    How much a string looks like a matrix number, ignoring how it was read.
-
-    Real runouts mix letters and digits and stay short-ish; a wall of letters is
-    usually the label's copyright ring misread, and a wall of digits is often a
-    barcode or grain.
-    """
-    compact = value.replace(" ", "")
-    letters = sum(c.isalpha() for c in compact)
-    digits = sum(c.isdigit() for c in compact)
-    score = 0.4
-    if letters and digits:
-        score += 0.3
-    if 5 <= len(compact) <= 20:
-        score += 0.2
-    if "-" in value or "/" in value:
-        score += 0.1
-    return min(score, 1.0)
+def _api_key() -> str | None:
+    """The key from the environment, else from the project .env."""
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    env_file = Path(__file__).resolve().parent.parent / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("ANTHROPIC_API_KEY="):
+                return line.split("=", 1)[1].strip() or None
+    return None
 
 
 def read_runout(path: str) -> dict:
-    """
-    Every candidate string the ladder could pull out of a deadwax photo.
-
-    Rotations come before variants: an etching runs along the groove, so a phone
-    photo holds it at an arbitrary angle, and tesseract reads only what is within
-    ~15° of horizontal. Four rotations of five variants is twenty OCR calls at
-    worst; the ladder stops early once any rotation yields agreeing reads, to
-    keep the common case fast.
-    """
-    image = cv2.imread(path, cv2.IMREAD_COLOR)
-    if image is None:
+    file = Path(path)
+    if not file.exists():
         return {"error": "could not read the photo"}
+    media_type = MEDIA_TYPES.get(file.suffix.lower(), "image/jpeg")
+    image_data = base64.standard_b64encode(file.read_bytes()).decode("utf-8")
 
-    # Work at a size where 8pt etching still has pixels but OCR stays quick.
-    h, w = image.shape[:2]
-    scale = 1600 / max(h, w)
-    if scale < 1:
-        image = cv2.resize(image, (round(w * scale), round(h * scale)))
+    import anthropic
 
-    grey = _greyscale(image)
-
-    seen: dict[str, dict] = {}
-    rotations = [None, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE]
-    for rotation in rotations:
-        rotated = grey if rotation is None else cv2.rotate(grey, rotation)
-        for name, variant in _variants(rotated):
-            for psm in (11, 7):
-                for value in _candidates_in(_ocr(variant, psm)):
-                    entry = seen.setdefault(
-                        value, {"value": value, "variants": set(), "plausibility": _plausibility(value)}
-                    )
-                    entry["variants"].add(f"{name}/psm{psm}" + ("" if rotation is None else "/rot"))
-        # Two independent variants agreeing on a plausible string is as good as
-        # this gets — later rotations only re-find the same etching sideways.
-        if any(len(e["variants"]) >= 2 and e["plausibility"] >= 0.7 for e in seen.values()):
-            break
-
-    candidates = []
-    for entry in seen.values():
-        agreement = min(len(entry["variants"]) / 3.0, 1.0)
-        confidence = round(0.5 * entry["plausibility"] + 0.5 * agreement, 2)
-        candidates.append(
-            {
-                "value": entry["value"],
-                "confidence": confidence,
-                "variants": sorted(entry["variants"]),
-            }
+    # An explicit key (environment or project .env) wins; otherwise let the SDK
+    # resolve its own chain (ANTHROPIC_AUTH_TOKEN, an `ant auth login` profile).
+    key = _api_key()
+    client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+    try:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=2000,
+            output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image",
+                     "source": {"type": "base64", "media_type": media_type, "data": image_data}},
+                    {"type": "text", "text": PROMPT},
+                ],
+            }],
         )
-    candidates.sort(key=lambda c: c["confidence"], reverse=True)
+    except anthropic.AuthenticationError:
+        return {"error": "Anthropic credentials were rejected — check ANTHROPIC_API_KEY in .env (see .env.example)"}
+    except TypeError:
+        return {
+            "error": "ANTHROPIC_API_KEY is not set — add it to .env (see .env.example); "
+                     "the deadwax reader uses Claude vision"
+        }
+    except anthropic.APIStatusError as exc:
+        return {"error": f"Claude vision call failed: {exc.status_code} {exc.message}"}
+    except anthropic.APIConnectionError:
+        return {"error": "Could not reach the Anthropic API — check the network"}
+
+    if response.stop_reason == "refusal":
+        return {"error": "Claude declined to read this photo"}
+    text = next((b.text for b in response.content if b.type == "text"), None)
+    if not text:
+        return {"error": "Claude vision returned no readable result"}
+    read = json.loads(text)
+
+    confidence = CONFIDENCE.get(read.get("confidence"), 0.3)
+    candidates = []
+    for side, value in (("A", read.get("side_a_matrix")), ("B", read.get("side_b_matrix"))):
+        if value:
+            candidates.append({"value": value, "confidence": confidence, "side": side})
 
     return {
-        "candidates": candidates[:8],
+        "candidates": candidates,
         "best": candidates[0]["value"] if candidates else None,
+        "raw_text": read.get("raw_text") or "",
+        "notes": read.get("notes") or "",
+        "confidence": read.get("confidence") or "low",
     }

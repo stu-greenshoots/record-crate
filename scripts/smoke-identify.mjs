@@ -6,7 +6,9 @@
  *
  * Photo arguments are type=path pairs (types: front, back, label, runout);
  * search= adds a fallback search hint. Needs the server running — npm run server —
- * because the Discogs lookup goes through its auth and rate limiting.
+ * because the Discogs lookup goes through its auth and rate limiting. Runout
+ * extraction needs ANTHROPIC_API_KEY set (in .env or the environment — see
+ * .env.example): the deadwax reader calls Claude vision.
  */
 
 import fs from 'node:fs'
