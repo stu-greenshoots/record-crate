@@ -57,6 +57,11 @@ export function matchSleeve(imagePath, indexPath) {
   return runPython(['identify', '--image', imagePath, '--index', indexPath])
 }
 
+/** Read the matrix etchings from a photograph of the deadwax. */
+export function readRunout(imagePath) {
+  return runPython(['runout', '--image', imagePath])
+}
+
 /**
  * Characters that look alike, grouped so each maps to one representative.
  *

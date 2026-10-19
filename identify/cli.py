@@ -1,6 +1,6 @@
 """Command-line bridge: the Node server shells out to this and reads JSON back."""
 import argparse, json, sys
-from . import backcover, covers, text
+from . import backcover, covers, runout, text
 
 def main() -> int:
     p = argparse.ArgumentParser()
@@ -19,12 +19,17 @@ def main() -> int:
     k.add_argument('--image', required=True)
     k.add_argument('--no-deskew', action='store_true')
 
+    r = sub.add_parser('runout')
+    r.add_argument('--image', required=True)
+
     a = p.parse_args()
     try:
         if a.cmd == 'index':
             out = covers.build_index(a.manifest, a.out)
         elif a.cmd == 'backcover':
             out = backcover.read_back(a.image, deskew=not a.no_deskew)
+        elif a.cmd == 'runout':
+            out = runout.read_runout(a.image)
         else:
             out = {}
             if a.index:
