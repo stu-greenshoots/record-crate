@@ -21,6 +21,7 @@ def main() -> int:
 
     r = sub.add_parser('runout')
     r.add_argument('--image', required=True)
+    r.add_argument('--backend')
 
     a = p.parse_args()
     try:
@@ -29,7 +30,7 @@ def main() -> int:
         elif a.cmd == 'backcover':
             out = backcover.read_back(a.image, deskew=not a.no_deskew)
         elif a.cmd == 'runout':
-            out = runout.read_runout(a.image)
+            out = runout.read_runout(a.image, backend=a.backend)
         else:
             out = {}
             if a.index:
