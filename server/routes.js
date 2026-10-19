@@ -19,7 +19,8 @@ import { allRecords, sortRecords, SORT_MODES, buildRecord } from './records.js'
 import { collationKey } from '../shared/classify.js'
 import { buildShelfMap, locate, DEFAULT_MAP } from '../shared/shelfmap.js'
 import { placeRecord, candidateFromRelease } from './place.js'
-import { readBackCover, pythonAvailable, catnoSimilarity } from './identify.js'
+import { readBackCover, readRunout, pythonAvailable, catnoSimilarity } from './identify.js'
+import { rankPressings } from '../shared/pressingMatch.js'
 
 export const router = express.Router()
 
@@ -465,6 +466,88 @@ router.post(
       owned: owned.slice(0, 3),
       results: results.slice(0, 12),
       via,
+    })
+  }),
+)
+
+/**
+ * Which pressing is it? Photos in, ranked candidates out.
+ *
+ * Photos arrive as JSON with base64 data, tagged by what they show: front, back,
+ * label, or runout. The sleeve photos feed the existing reader (catalogue number,
+ * search terms); the runout photo feeds the deadwax reader; the signals meet in
+ * shared/pressingMatch.js against a Discogs shortlist. Base64-over-JSON rather
+ * than multipart keeps the server dependency-free — at a handful of photos per
+ * request the inflation is affordable.
+ */
+router.post(
+  '/identify/pressing',
+  express.json({ limit: '60mb' }),
+  wrap(async (req, res) => {
+    if (!pythonAvailable()) {
+      return res.status(503).json({ error: 'The photo reader needs the Python environment' })
+    }
+    const photos = (req.body?.photos || []).filter((p) => p?.data && p?.type)
+    if (!photos.length) {
+      return res.status(400).json({ error: 'Send photos: [{ type: front|back|label|runout, data: base64 }]' })
+    }
+
+    const signals = { runouts: [], catno: null, year: null, country: null }
+    const reads = []
+    for (const photo of photos.slice(0, 6)) {
+      const file = path.join(os.tmpdir(), `crate-read-${crypto.randomBytes(6).toString('hex')}.jpg`)
+      fs.writeFileSync(file, Buffer.from(photo.data, 'base64'))
+      try {
+        if (photo.type === 'runout') {
+          const read = await readRunout(file)
+          signals.runouts.push(...(read.candidates || []).map((c) => c.value))
+          reads.push({ type: 'runout', ...read })
+        } else {
+          const read = await readBackCover(file)
+          if (!signals.catno && read.catalogueNumbers?.length) {
+            signals.catno = read.catalogueNumbers[0].value
+          }
+          reads.push({ type: photo.type, ...read })
+        }
+      } finally {
+        fs.rmSync(file, { force: true })
+      }
+    }
+
+    // The shortlist: catalogue number first because it names the album precisely,
+    // search terms (or caller-supplied artist/title) when no number survived.
+    let shortlist = []
+    if (signals.catno) {
+      const params = new URLSearchParams({ type: 'release', format: 'Vinyl', per_page: '18', catno: signals.catno })
+      const found = await api(`/database/search?${params}`, { priority: 0 })
+      shortlist = summariseResults(found?.results || [])
+    }
+    const terms = req.body?.hints?.search
+      || reads.find((r) => r.searchTerms)?.searchTerms
+    if (!shortlist.length && terms) {
+      const params = new URLSearchParams({ type: 'release', format: 'Vinyl', per_page: '12', q: terms })
+      const found = await api(`/database/search?${params}`, { priority: 0 })
+      shortlist = summariseResults(found?.results || [])
+    }
+    if (!shortlist.length) {
+      return res.json({ reads, candidates: [], confidence: 'none',
+        error: 'Nothing readable enough to search Discogs with — try a sharper photo of the sleeve or label' })
+    }
+
+    // The search result names releases; only the detail carries their matrix
+    // etchings, so fetch details for the head of the list before ranking.
+    const details = []
+    for (const result of shortlist.slice(0, 8)) {
+      const detail = await fetchReleaseDetail(result.releaseId)
+      if (detail && !detail.missing) details.push({ ...result, ...detail })
+    }
+
+    const ranked = rankPressings(details, signals)
+    res.json({
+      reads,
+      signals,
+      confidence: ranked.confidence,
+      candidates: ranked.candidates.slice(0, 8),
     })
   }),
 )
