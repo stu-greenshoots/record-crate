@@ -157,7 +157,7 @@ a fallback when the direct read comes back weak.
 - Local / offline preferred; no paid API dependency.
 - ~~Must distinguish **pressings**, not just albums.~~ Measured and withdrawn —
   see the discovery pass below. Placement is decided at album level.
-- Python is available (`.venv` has OpenCV 5.0, numpy, Pillow, anthropic; tesseract is on
+- Python is available (`.venv` has OpenCV 5.0, numpy, Pillow, anthropic, google-genai, openai; tesseract is on
   PATH). Node calls Python via `identify/cli.py`.
 
 ### Unexplored angles worth a discovery pass
