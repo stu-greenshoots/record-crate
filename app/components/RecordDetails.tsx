@@ -4,6 +4,7 @@ import type { Rec } from '../types'
 import { toast } from './Toast'
 import { go } from '../route'
 import { PressingSection } from './Pressing'
+import { Tracks } from './Tracks'
 
 /** What else there is to know or change about a record: its shelf, the name it's filed under. */
 export function RecordDetails({ rec }: { rec: Rec }) {
@@ -16,6 +17,7 @@ export function RecordDetails({ rec }: { rec: Rec }) {
 
   return (
     <section className="record-extra">
+      <Tracks rec={rec} />
       <button type="button" className="row-button" onClick={() => setShelfOpen((v) => !v)}>
         <span>Shelf</span>
         <span className="row-value">{shelfName}</span>

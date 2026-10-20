@@ -274,13 +274,14 @@ def more_sides(release_id: int, first: int, src: Path, embed: dict, prob) -> lis
     return out[:7]
 
 
-def crop(path: Path, c: Circle, out: Path, size: int = 320):
-    """The label alone, as a square WebP with everything outside the circle cleared."""
+def crop(path: Path, c: Circle, out: Path, size: int = 320, inset: float = 0.97):
+    """The label alone, as a square WebP with everything outside the circle cleared
+    (and anything beyond the photo's edge left clear too)."""
     from PIL import Image, ImageDraw
 
-    im = Image.open(path).convert('RGB')
+    im = Image.open(path).convert('RGBA')
     # A hair inside the rim, so no vinyl or background shows round the edge.
-    r = c.r * 0.97
+    r = c.r * inset
     box = (round(c.cx - r), round(c.cy - r), round(c.cx + r), round(c.cy + r))
     square = im.crop(box).resize((size, size), Image.LANCZOS).convert('RGBA')
     mask = Image.new('L', (size * 4, size * 4), 0)

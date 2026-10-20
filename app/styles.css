@@ -3001,3 +3001,115 @@ button.stat-row:active {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
+
+/* The track list on the album page. */
+.tracks {
+  margin-bottom: 18px;
+}
+
+.tracks-side-name {
+  margin: 12px 0 4px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tracks ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 22px 30px 1fr auto;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.track:hover,
+.track:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.track-mark {
+  color: var(--amber);
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.track-pos,
+.track-time {
+  color: var(--text-3);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.track-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tracks li.on .track {
+  background: var(--amber-dim);
+}
+
+.tracks li.on .track-title {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.tracks li.on .track-mark {
+  opacity: 1;
+}
+
+/* Playing: three bars dancing; lifted, they stop. */
+.bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+
+.bars i {
+  width: 3px;
+  height: 100%;
+  background: var(--amber);
+  animation: bar 0.9s ease-in-out infinite alternate;
+}
+
+.bars i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.bars i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+.bars.still i {
+  animation: none;
+  height: 40%;
+}
+
+@keyframes bar {
+  from {
+    height: 25%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bars i {
+    animation: none;
+  }
+}

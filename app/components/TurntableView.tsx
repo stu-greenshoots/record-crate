@@ -229,6 +229,11 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
     const t = setInterval(() => tick((n) => n + 1), 500)
     return () => clearInterval(t)
   }, [needleHere])
+  // A track played from the list on the other side: turn the record over to it.
+  useEffect(() => {
+    if (now && now.recId === id && now.face !== face) setUp({ id, i: now.face })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now?.recId, now?.face])
   // Another record on the platter takes the needle off the last one.
   useEffect(() => {
     if (now && now.recId !== id) stop()
