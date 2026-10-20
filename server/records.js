@@ -1,6 +1,6 @@
 import { store } from './store.js'
 import { deriveSortName, artistKey, collationKey, cleanArtistName } from '../shared/classify.js'
-import { shelfWidth, shelfHeight } from '../shared/thickness.js'
+import { discInches, shelfWidth, shelfHeight } from '../shared/thickness.js'
 
 function primaryArtist(item) {
   const list = item.info.artists || []
@@ -121,6 +121,7 @@ export function buildRecord(item) {
     width: shelfWidth(info, detail?.estimatedWeight ?? null),
     // Sleeve height relative to a 12" LP, so a 7" stands short on the shelf.
     height: shelfHeight(info),
+    inches: discInches(info),
     formatTags: [...new Set((info.formats || []).flatMap((f) => [f.name, ...(f.descriptions || [])]))],
     shelf: record.shelf,
     autoShelf: record.autoShelf || null,

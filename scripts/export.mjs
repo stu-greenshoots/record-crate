@@ -37,7 +37,18 @@ function cachedImage(url) {
 const LABELS = path.join(OUT, 'labels')
 // Label crops that are really the whole record (identify/discs.py).
 const DISCS = path.join(DATA_DIR, 'discs.json')
-const discs = new Set(fs.existsSync(DISCS) ? JSON.parse(fs.readFileSync(DISCS, 'utf8')).discs.map(Number) : [])
+const discFile = fs.existsSync(DISCS) ? JSON.parse(fs.readFileSync(DISCS, 'utf8')) : { discs: [], drop: [] }
+const discs = new Set(discFile.discs.map(Number))
+// Crops of more than one record (two discs, or the sleeve too): a printed label instead.
+const dropped = new Set((discFile.drop || []).map(Number))
+
+function labelFields(releaseId) {
+  if (discs.has(releaseId) && fs.existsSync(path.join(OUT, 'discs', `${releaseId}.webp`))) {
+    return { labelArt: `discs/${releaseId}.webp`, labelDisc: true }
+  }
+  if (dropped.has(releaseId)) return { labelArt: null }
+  return { labelArt: fs.existsSync(path.join(LABELS, `${releaseId}.webp`)) ? `labels/${releaseId}.webp` : null }
+}
 
 const records = allRecords()
 
@@ -112,6 +123,7 @@ const out = records.map((r) => {
     shelf: r.shelf,
     width: r.width,
     height: r.height,
+    inches: r.inches === 12 ? undefined : r.inches,
     format: r.formatShort,
     catno: r.catno,
     label: r.label,
@@ -124,8 +136,7 @@ const out = records.map((r) => {
     masterId: r.masterId || null,
     artistId: r.artistId || null,
     ...pressFields(pressings.get(r.releaseId)),
-    labelArt: fs.existsSync(path.join(LABELS, `${r.releaseId}.webp`)) ? `labels/${r.releaseId}.webp` : null,
-    labelDisc: discs.has(r.releaseId) || undefined,
+    ...labelFields(r.releaseId),
   }
 })
 

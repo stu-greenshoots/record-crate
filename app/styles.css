@@ -1965,8 +1965,8 @@ body.typing .page {
 
 .disc-label {
   display: flex;
-  width: 35.7%;
-  height: 35.7%;
+  width: var(--label, 35.7%);
+  height: var(--label, 35.7%);
   border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 0 0 2px #0e0d0d;

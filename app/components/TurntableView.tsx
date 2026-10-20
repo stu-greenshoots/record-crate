@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { noteLookup, putBack, takeOut, useStore } from '../store'
 import type { Derived } from '../store'
 import { go } from '../route'
@@ -303,7 +303,7 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
           <div
             key={rec ? `on-${drop}` : 'empty'}
             className={`disc ${rec ? 'on' : 'empty'}`}
-            style={{ left: g.cx - g.d / 2, top: g.cy - g.d / 2, width: g.d, height: g.d }}
+            style={discStyle(g, rec?.inches)}
           >
             {rec ? <RecordLabel key={rec.id} rec={rec} /> : <span className="disc-label blank" />}
           </div>
@@ -515,4 +515,14 @@ function Welcome({ store }: { store: Derived }) {
       </button>
     </div>
   )
+}
+
+/**
+ * A 7" or 10" sits on the same 12" platter, smaller, with a label that takes up more
+ * of it: about 3½" across on a 7", 4" on a 10" or 12".
+ */
+function discStyle(g: { cx: number; cy: number; d: number }, inches = 12) {
+  const d = (g.d * inches) / 12
+  const label = inches <= 7 ? 50 : inches <= 10 ? 40 : 35.7
+  return { left: g.cx - d / 2, top: g.cy - d / 2, width: d, height: d, '--label': `${label}%` } as CSSProperties
 }

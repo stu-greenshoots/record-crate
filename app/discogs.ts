@@ -1,5 +1,5 @@
 import { classifyShelf, cleanArtistName, deriveSortName } from '../shared/classify.js'
-import { shelfHeight, shelfWidth } from '../shared/thickness.js'
+import { discInches, shelfHeight, shelfWidth } from '../shared/thickness.js'
 import { useSyncExternalStore } from 'react'
 import { getStore, update } from './store'
 import type { Rec } from './types'
@@ -196,6 +196,7 @@ async function toRecord(item: any, filedAs: Map<string, string>): Promise<Rec> {
     shelf: shelves.has(shelf) ? shelf : 'main',
     width: shelfWidth(info, null) as number,
     height: shelfHeight(info) as number,
+    inches: discInches(info) === 12 ? undefined : discInches(info),
     format: descs.find((d: string) => /^(LP|EP|\d+"|Single|Album|Compilation)$/i.test(d)) || b.formats?.[0]?.name || '',
     catno: b.labels?.[0]?.catno || '',
     label: b.labels?.[0]?.name || '',

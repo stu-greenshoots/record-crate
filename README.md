@@ -112,8 +112,9 @@ gets a plain printed label.
 On a coloured, clear or picture disc there are no dark grooves to find the label
 inside, so the "label" it crops can be the whole record. `identify/discs.py` tells
 those apart (a probe on each crop's embedding, trained on
-`identify/tests/disc-truth.json`), and the turntable draws them across the whole
-platter. Measure with `.venv/bin/python -m identify.discs`; it fails if any label
+`identify/tests/disc-truth.json`), re-crops them round their label so they spin
+true (`public/discs/`), and the turntable draws them across the whole platter. A 7"
+or 10" is drawn to scale on the 12" platter. Measure with `.venv/bin/python -m identify.discs`; it fails if any label
 would be shown as a disc.
 
 `fetch-details.mjs` only fetches what's missing: each album's vinyl versions (for the

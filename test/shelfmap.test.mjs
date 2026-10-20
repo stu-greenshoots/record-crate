@@ -1,5 +1,5 @@
 import { buildShelfMap, DEFAULT_MAP } from '../shared/shelfmap.js'
-import { shelfWidth } from '../shared/thickness.js'
+import { discInches, shelfWidth } from '../shared/thickness.js'
 
 let pass = 0, fail = 0
 const ok = (cond, label, extra = '') => {
@@ -143,6 +143,14 @@ ok(w([{ ...LP[0], text: 'Gatefold' }]) > w(LP), 'a gatefold takes more than a pl
 ok(w([{ ...LP[0], text: '180 Gram' }]) > w(LP), '180-gram takes more than standard weight')
 ok(w([{ name: 'Vinyl', qty: '1', descriptions: ['7"', 'Single'] }]) < 0.5, 'a 7" is a fraction of an LP')
 ok(w(LP, 460) > w(LP, 230), "Discogs' own weight estimate moves the figure")
+
+const inch = (formats) => discInches({ formats })
+ok(inch([{ name: 'Vinyl', qty: '1', descriptions: ['LP', 'Album'] }]) === 12, 'an LP is 12 inches')
+ok(inch([{ name: 'Vinyl', qty: '1', descriptions: ['7"', '45 RPM', 'Single'] }]) === 7, 'a 7" single is 7 inches')
+ok(inch([{ name: 'Vinyl', qty: '1', descriptions: ['10"', 'EP'] }]) === 10, 'a 10" is 10 inches')
+ok(inch([{ name: 'Vinyl', qty: '1', descriptions: ['LP'] }, { name: 'Vinyl', qty: '1', descriptions: ['7"'] }]) === 12, 'an LP with a bonus 7" plays as an LP')
+ok(inch([{ name: 'CD', qty: '1', descriptions: ['Album'] }, { name: 'Vinyl', qty: '1', descriptions: ['7"'] }]) === 7, 'the first vinyl in the package counts')
+ok(inch([]) === 12, 'nothing known: an LP')
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail ? 1 : 0)

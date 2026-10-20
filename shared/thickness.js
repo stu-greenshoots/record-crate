@@ -92,6 +92,17 @@ const MEDIA_HEIGHT = [
   [/^file$/i, 0],
 ]
 
+/**
+ * How big the record itself is, in inches: what the turntable draws. The first vinyl
+ * in the package decides, so an LP with a bonus 7" plays as an LP. Discogs calls a
+ * 12" album "LP" and gives no size, hence the default.
+ */
+export function discInches(info) {
+  const vinyl = (info.formats || []).find((f) => /vinyl|lathe|acetate|flexi/i.test(f.name || ''))
+  const size = (vinyl?.descriptions || []).map((d) => /^(\d+)"$/.exec(String(d))).find(Boolean)
+  return size ? Number(size[1]) : 12
+}
+
 export function shelfHeight(info) {
   const formats = info.formats || []
   const f = formats[0]
