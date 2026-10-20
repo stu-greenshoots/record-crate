@@ -4,7 +4,7 @@ import type { Derived } from '../store'
 import { go } from '../route'
 import { warmUp } from '../recognise'
 import { alongWords, cubePlace, fractionAlong, yearOf } from '../where'
-import type { BuiltMap, Rec } from '../types'
+import type { BuiltMap, Face, Rec } from '../types'
 import { Sleeve } from './Sleeve'
 import { RecordLabel } from './Label'
 import { SearchPanel } from './SearchPanel'
@@ -190,6 +190,43 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
   }
   const drop = seen.current.drop
 
+  // Which side is up. Tapping the label turns the record over; on a set, the side after
+  // B is the next record's A side (C), and so on round.
+  const faces = useMemo(() => facesOf(rec), [rec])
+  const [up, setUp] = useState<{ id: number | null; i: number }>({ id: null, i: 0 })
+  const face = up.id === id ? up.i % faces.length : 0
+  const discEl = useRef<HTMLDivElement>(null)
+  const turning = useRef(false)
+  const turnOver = () => {
+    if (turning.current || faces.length < 2) return
+    const next = (face + 1) % faces.length
+    const el = discEl.current
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    // Onto the next record of a set: that one is lowered on, like any record.
+    if (Math.floor(next / 2) !== Math.floor(face / 2) || still || !el?.animate) return setUp({ id, i: next })
+    turning.current = true
+    // Lift it and turn it edge on, swap the side, and turn it back down.
+    const lift = el.animate([{ rotate: 'y 0deg', translate: '0 0' }, { rotate: 'y 90deg', translate: '0 -14px' }], {
+      duration: 260,
+      easing: 'ease-in',
+      fill: 'forwards',
+    })
+    lift.finished
+      .then(() => {
+        setUp({ id, i: next })
+        const down = el.animate([{ rotate: 'y -90deg', translate: '0 -14px' }, { rotate: 'y 0deg', translate: '0 0' }], {
+          duration: 340,
+          easing: 'cubic-bezier(.2,.8,.3,1)',
+        })
+        lift.cancel()
+        return down.finished
+      })
+      .catch(() => {})
+      .finally(() => {
+        turning.current = false
+      })
+  }
+
   useLayoutEffect(() => {
     const el = stage.current
     if (!el) return
@@ -301,11 +338,22 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
           )}
           <span className="platter" aria-hidden style={{ left: g.cx - g.d / 2 - 10, top: g.cy - g.d / 2 - 10, width: g.d + 20, height: g.d + 20 }} />
           <div
-            key={rec ? `on-${drop}` : 'empty'}
+            key={rec ? `on-${drop}-${Math.floor(face / 2)}` : 'empty'}
+            ref={discEl}
             className={`disc ${rec ? 'on' : 'empty'}`}
             style={discStyle(g, rec?.inches)}
           >
-            {rec ? <RecordLabel key={rec.id} rec={rec} /> : <span className="disc-label blank" />}
+            {rec ? <RecordLabel key={`${rec.id}-${face}`} rec={rec} face={faces[face]} /> : <span className="disc-label blank" />}
+            {rec && faces.length > 1 && (
+              <button
+                type="button"
+                className="label-hit"
+                aria-label={`Side ${faces[face].side} is up. ${
+                  Math.floor(((face + 1) % faces.length) / 2) === Math.floor(face / 2) ? 'Turn it over to' : 'Put on'
+                } side ${faces[(face + 1) % faces.length].side}`}
+                onClick={turnOver}
+              />
+            )}
           </div>
           <span className="spindle" aria-hidden style={{ left: g.cx, top: g.cy }} />
           {wide && (
@@ -525,4 +573,19 @@ function discStyle(g: { cx: number; cy: number; d: number }, inches = 12) {
   const d = (g.d * inches) / 12
   const label = inches <= 7 ? 50 : inches <= 10 ? 40 : 35.7
   return { left: g.cx - d / 2, top: g.cy - d / 2, width: d, height: d, '--label': `${label}%` } as CSSProperties
+}
+
+/** The sides to flip through. A record bought since the snapshot has only what the
+ * phone knows: one label, maybe, and two sides. */
+function facesOf(rec: Rec | null): Face[] {
+  if (!rec) return [{ side: 'A' }]
+  const faces: Face[] = rec.faces?.length
+    ? rec.faces
+    : [{ side: 'A', art: rec.labelArt || undefined, disc: rec.labelDisc }, { side: 'B' }]
+  // A side with only a label photo, on a coloured or picture disc whose other side was
+  // photographed whole, shows that vinyl round its label rather than turning black.
+  return faces.map((f, i) => {
+    const other = faces[i ^ 1]
+    return !f.disc && other?.disc && other.art ? { ...f, under: other.art } : f
+  })
 }

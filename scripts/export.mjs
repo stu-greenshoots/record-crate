@@ -17,6 +17,7 @@ import { allRecords } from '../server/records.js'
 import { collectPeople } from '../shared/credits.js'
 import { cutters, noteParts, physical, runouts, verdict } from '../shared/pressing.js'
 import { discography } from '../shared/discography.js'
+import { sides } from '../shared/sides.js'
 
 const OUT = path.join(ROOT, 'public')
 const COVERS = path.join(OUT, 'covers')
@@ -38,16 +39,29 @@ const LABELS = path.join(OUT, 'labels')
 // Label crops that are really the whole record (identify/discs.py).
 const DISCS = path.join(DATA_DIR, 'discs.json')
 const discFile = fs.existsSync(DISCS) ? JSON.parse(fs.readFileSync(DISCS, 'utf8')) : { discs: [], drop: [] }
-const discs = new Set(discFile.discs.map(Number))
+const discs = new Set(discFile.discs.map(String))
 // Crops of more than one record (two discs, or the sleeve too): a printed label instead.
-const dropped = new Set((discFile.drop || []).map(Number))
+const dropped = new Set((discFile.drop || []).map(String))
+
+/** One side's label photo: <id> is side A, <id>-2 the next side, and so on. */
+function art(stem) {
+  if (discs.has(stem) && fs.existsSync(path.join(OUT, 'discs', `${stem}.webp`))) return { art: `discs/${stem}.webp`, disc: true }
+  if (dropped.has(stem)) return {}
+  return fs.existsSync(path.join(LABELS, `${stem}.webp`)) ? { art: `labels/${stem}.webp` } : {}
+}
 
 function labelFields(releaseId) {
-  if (discs.has(releaseId) && fs.existsSync(path.join(OUT, 'discs', `${releaseId}.webp`))) {
-    return { labelArt: `discs/${releaseId}.webp`, labelDisc: true }
-  }
-  if (dropped.has(releaseId)) return { labelArt: null }
-  return { labelArt: fs.existsSync(path.join(LABELS, `${releaseId}.webp`)) ? `labels/${releaseId}.webp` : null }
+  const a = art(String(releaseId))
+  return { labelArt: a.art || null, labelDisc: a.disc }
+}
+
+/** The sides the turntable flips through, each with its label photo where there is one. */
+function facesOf(releaseId) {
+  const file = path.join(DATA_DIR, 'releases', `${releaseId}.json`)
+  const detail = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null
+  const vinyl = (detail?.formats || []).filter((f) => /vinyl|lathe|acetate|flexi/i.test(f.name || ''))
+  const count = vinyl.reduce((n, f) => n + (Number(f.qty) || 1), 0) || 1
+  return sides(detail?.tracklist, count).map((s, i) => ({ side: s.side, ...art(i ? `${releaseId}-${i + 1}` : String(releaseId)) }))
 }
 
 const records = allRecords()
@@ -137,6 +151,7 @@ const out = records.map((r) => {
     artistId: r.artistId || null,
     ...pressFields(pressings.get(r.releaseId)),
     ...labelFields(r.releaseId),
+    faces: facesOf(r.releaseId),
   }
 })
 

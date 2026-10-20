@@ -5,7 +5,8 @@ grooves. A coloured, clear or picture disc has none, so in a photo of the whole
 record it takes the disc's edge for the label's, and the whole disc ends up squeezed
 into the middle of the platter. Some photos of black records go the same way.
 
-A linear probe on the DINOv2 embedding of each crop tells the two apart, trained on
+A linear probe on the DINOv2 embedding of each crop (every side's) tells the two
+apart, trained on
 hand-marked crops (tests/disc-truth.json) and every other crop taken as a label:
 most are, and the unmarked crops the probe rated most disc-like were all checked by
 eye and were labels. Those crops are then drawn across the
@@ -101,6 +102,12 @@ def centred(path: Path) -> Circle | None:
     return Circle(x / s, y / s, (r - math.hypot(x - cx, y - cy)) / s, 'centred on the label')
 
 
+def order(stem: str) -> tuple[int, int]:
+    """A crop's release and side: 123 is side 1 (A), 123-2 the next side."""
+    rid, _, side = stem.partition('-')
+    return int(rid), int(side or 1)
+
+
 def probe(embed: dict, marks: dict[str, int], skip=frozenset()):
     keys = [k for k in embed if k not in skip]
     w, b = _fit(np.array([embed[k] for k in keys]), np.array([marks.get(k, 0) for k in keys], dtype=float))
@@ -119,7 +126,7 @@ if __name__ == '__main__':
         p = probe(embed, marks)
         crops = {f.stem for f in LABELS.glob('*.webp')}
         # A hand mark outranks the probe.
-        discs = sorted((k for k in embed if k in crops and marks.get(k, p(embed[k]) >= THRESHOLD)), key=int)
+        discs = sorted((k for k in embed if k in crops and marks.get(k, p(embed[k]) >= THRESHOLD)), key=order)
         drop = [k for k in neither() if k in discs]
         discs = [k for k in discs if k not in drop]
         WHOLE.mkdir(exist_ok=True)
@@ -127,11 +134,13 @@ if __name__ == '__main__':
             if old.stem not in discs:
                 old.unlink()
         labels = json.loads((ROOT / 'data/labels.json').read_text())
-        for rid in discs:
-            out = WHOLE / f'{rid}.webp'
-            if out.exists() and out.stat().st_mtime >= (LABELS / f'{rid}.webp').stat().st_mtime:
+        for stem in discs:
+            out = WHOLE / f'{stem}.webp'
+            if out.exists() and out.stat().st_mtime >= (LABELS / f'{stem}.webp').stat().st_mtime:
                 continue
-            photo = SRC / f'{rid}_{labels[rid]["photo"]}.jpg'
+            rid, side = order(stem)
+            d = labels[str(rid)]
+            photo = SRC / f'{rid}_{d["photo"] if side == 1 else d["more"][side - 2]}.jpg'
             c = centred(photo)
             if c:
                 crop(photo, c, out, size=480)

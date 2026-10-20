@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Rec } from '../types'
+import type { Face, Rec } from '../types'
 
 /**
  * The record's centre label: the photo from Discogs, cropped to the circle, where the
@@ -7,14 +7,27 @@ import type { Rec } from '../types'
  * disc), it covers the platter instead. Otherwise a plain label printed from what we know, coloured
  * from the sleeve so the middle of the platter never looks like a hole.
  */
-export function RecordLabel({ rec }: { rec: Rec }) {
+export function RecordLabel({ rec, face }: { rec: Rec; face: Face }) {
   const [failed, setFailed] = useState(false)
-  if (rec.labelArt && !failed) {
+  const label = labelFor(rec, face, failed, setFailed)
+  if (!face.under) return label
+  return (
+    <>
+      <span className="disc-under" aria-hidden>
+        <img src={`${import.meta.env.BASE_URL}${face.under}`} alt="" draggable={false} />
+      </span>
+      {label}
+    </>
+  )
+}
+
+function labelFor(rec: Rec, face: Face, failed: boolean, setFailed: (v: boolean) => void) {
+  if (face.art && !failed) {
     return (
-      <span className={`disc-label ${rec.labelDisc ? 'whole' : ''}`}>
+      <span className={`disc-label ${face.disc ? 'whole' : ''}`}>
         <img
-          src={`${import.meta.env.BASE_URL}${rec.labelArt}`}
-          alt={rec.labelDisc ? `The record, ${rec.title}` : `Label of ${rec.title}`}
+          src={`${import.meta.env.BASE_URL}${face.art}`}
+          alt={face.disc ? `${rec.title}, side ${face.side}` : `Label of ${rec.title}, side ${face.side}`}
           draggable={false}
           onError={() => setFailed(true)}
         />
@@ -32,8 +45,8 @@ export function RecordLabel({ rec }: { rec: Rec }) {
       <span className="printed-hole" />
       <span className="printed-artist">{rec.artist}</span>
       <span className="printed-bottom">
-        {rec.catno}
-        {rec.catno ? ' · ' : ''}33⅓
+        Side {face.side}
+        {rec.catno ? ` · ${rec.catno}` : ''}
       </span>
     </span>
   )

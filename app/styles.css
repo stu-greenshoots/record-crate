@@ -1891,6 +1891,8 @@ body.typing .page {
   position: relative;
   flex: 1;
   min-height: 0;
+  /* For the record turning over. */
+  perspective: 1600px;
   overflow: hidden;
   /* Sideways drags spin the ring; up and down still scroll the page. */
   touch-action: pan-y;
@@ -1972,6 +1974,44 @@ body.typing .page {
   box-shadow: 0 0 0 2px #0e0d0d;
 }
 
+/* A coloured disc's vinyl, from the other side's photo, round this side's label. */
+.disc-under {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.disc-under img {
+  width: 100%;
+  height: 100%;
+  /* The far side of the same vinyl: the pattern seen through it, mirrored. */
+  scale: -1 1;
+}
+
+.disc-label {
+  position: relative;
+}
+
+/* The label is what turns the record over. */
+.label-hit {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: var(--label, 35.7%);
+  height: var(--label, 35.7%);
+  translate: -50% -50%;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.label-hit:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
 .disc-label.whole {
   width: 100%;
   height: 100%;
@@ -2047,6 +2087,7 @@ body.typing .page {
   border-radius: 50%;
   background: #d9d6d0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 
 .arm {

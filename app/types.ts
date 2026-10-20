@@ -21,6 +21,8 @@ export interface Rec {
   colour?: string | null
   /** The centre label, cropped to its circle, where a photo of it was found. */
   labelArt?: string | null
+  /** Its sides in playing order, each with its label photo where one was found. */
+  faces?: Face[]
   /** The record's size where it isn't a 12", e.g. 7 for a single. */
   inches?: number
   /** The label photo is really the whole record (a coloured or picture disc, say). */
@@ -147,4 +149,13 @@ export interface Pressing {
     forSale: number | null
   }
   uri: string
+}
+
+export interface Face {
+  side: string
+  art?: string
+  /** The photo is of the whole record, not just its label. */
+  disc?: boolean
+  /** The other side's whole-record photo, shown round this side's label. */
+  under?: string
 }

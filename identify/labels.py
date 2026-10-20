@@ -13,6 +13,7 @@ separate questions:
 
     .venv/bin/python -m identify.labels            # measure against tests/labels-truth.json
     .venv/bin/python -m identify.labels --build    # crop new releases' labels into public/labels/
+                                                   # (<id>.webp side A, <id>-2.webp the next side…)
     .venv/bin/python -m identify.labels --build --all   # redo every release
     npm run labels                                 # download, embed and crop: what a new album needs
 """
@@ -256,6 +257,23 @@ def choose(release_id: int, src: Path, embed: dict, prob) -> tuple[int, Circle, 
     return None
 
 
+def more_sides(release_id: int, first: int, src: Path, embed: dict, prob) -> list[tuple[int, Circle]]:
+    """The other sides' labels: every later photo the probe is sure shows a label, in
+    Discogs' order, which puts side A first, then B, C, D (checked by eye on 16 releases).
+    Which of them are used depends on how many sides the track list has."""
+    keys = sorted((k for k in embed if k.split('_')[0] == str(release_id)), key=lambda k: int(k.split('_')[1]))
+    out = []
+    for key in keys:
+        n = int(key.split('_')[1])
+        if n <= first or prob(embed[key]) < THRESHOLD:
+            continue
+        path = src / f'{key}.jpg'
+        c = locate(path)
+        if c and not _cd_hole(path, c):
+            out.append((n, c))
+    return out[:7]
+
+
 def crop(path: Path, c: Circle, out: Path, size: int = 320):
     """The label alone, as a square WebP with everything outside the circle cleared."""
     from PIL import Image, ImageDraw
@@ -301,6 +319,16 @@ if __name__ == '__main__':
             else:
                 decided[rid] = None
                 (out / f'{rid}.webp').unlink(missing_ok=True)
+        # The other sides, for releases decided before sides were cropped too.
+        for rid, d in decided.items():
+            if not d or 'more' in d:
+                continue
+            for old in out.glob(f'{rid}-*.webp'):
+                old.unlink()
+            d['more'] = []
+            for i, (n, c) in enumerate(more_sides(int(rid), d['photo'], src, embed, prob)):
+                crop(src / f'{rid}_{n}.jpg', c, out / f'{rid}-{i + 2}.webp')
+                d['more'].append(n)
         record.write_text(json.dumps(decided, indent=1))
         have = sum(1 for v in decided.values() if v)
         print(f'{len(todo)} looked at; {have} of {len(decided)} releases have a label')
