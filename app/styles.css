@@ -3184,6 +3184,8 @@ html.playing {
 }
 
 .player-bar {
+  touch-action: pan-y;
+  transition: transform 0.2s var(--ease), opacity 0.2s;
   position: fixed;
   left: 0;
   right: 0;
@@ -3289,4 +3291,8 @@ html.playing {
 
 .preview .where-words a {
   color: var(--amber-2);
+}
+
+.player-bar.dragging {
+  transition: none;
 }

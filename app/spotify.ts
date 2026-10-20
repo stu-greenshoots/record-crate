@@ -378,5 +378,10 @@ export function previous() {
 export function stop() {
   if (!state.now) return
   player?.pause()
+  queue = []
   set({ now: null })
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = null
+    navigator.mediaSession.playbackState = 'none'
+  }
 }
