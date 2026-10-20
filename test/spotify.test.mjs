@@ -18,6 +18,7 @@ const remaster = [
 let a = align(abbeyA, remaster)
 ok(a.uris.join() === 'spotify:track:1,spotify:track:2,spotify:track:3', 'a remaster lines up track for track, suffixes and all', a.uris.join())
 ok(a.score === 1, 'and is a full match')
+ok(a.seconds.join() === '260,183,207', "Spotify's length for each of your tracks comes back too")
 
 const deluxe = [s('Intro', 30, 1), ...remaster.map((t, i) => ({ ...t, track_number: i + 2 })), s('Come Together - Take 5', 270, 5)]
 a = align(abbeyA, deluxe)
@@ -31,7 +32,7 @@ ok(a.uris[0] === 'spotify:track:1' && a.uris[1] === 'spotify:track:3', 'an unmat
 ok(a.uris.length === 2, 'one uri per Discogs track')
 
 a = align([d('Nothing Here', 100)], [s('Other', 300, 1)])
-ok(a.uris[0] === null && a.score === 0, 'no match is null, not a guess')
+ok(a.uris[0] === null && a.seconds[0] === null && a.score === 0, 'no match is null, not a guess')
 
 const best = bestAlbum([
   { id: 'live', tracks: [s('Come Together (Live)', 300, 1)] },

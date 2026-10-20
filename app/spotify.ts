@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { bestAlbum } from '../shared/spotify.js'
 import { sides as sidesFrom } from '../shared/sides.js'
+import { withLengths } from '../shared/needle.js'
 import { loadPressing } from './components/Pressing'
 import type { Rec, Side } from './types'
 
@@ -219,14 +220,16 @@ interface Found {
   id: string
   /** One per Discogs track, all sides in order; null where Spotify's album lacks it. */
   uris: (string | null)[]
+  /** Spotify's length of each, for the many records Discogs has no lengths for. */
+  seconds: (number | null)[]
 }
 
 async function findAlbum(rec: Rec, sides: Side[]): Promise<Found | null> {
   const known = read<Record<string, Found | { none: number }>>(ALBUMS) || {}
   const hit = known[rec.releaseId]
-  if (hit && 'id' in hit) return hit
+  if (hit && 'id' in hit && hit.seconds) return hit
   // Don't ask again for a day about an album that wasn't there.
-  if (hit && Date.now() - hit.none < 86_400_000) return null
+  if (hit && 'none' in hit && Date.now() - hit.none < 86_400_000) return null
   const want = sides.flatMap((s) => s.tracks)
   const artist = rec.artist && rec.artist !== 'Various' ? ` artist:${rec.artist}` : ''
   const found = await api(`search?${new URLSearchParams({ q: `album:${rec.title}${artist}`, type: 'album', limit: '5' })}`)
@@ -235,9 +238,25 @@ async function findAlbum(rec: Rec, sides: Side[]): Promise<Found | null> {
     candidates.map(async (a: any) => ({ id: a.id, tracks: (await api(`albums/${a.id}/tracks?limit=50`))?.items || [] })),
   )
   const best = bestAlbum(albums, want)
-  known[rec.releaseId] = best ? { id: best.id, uris: best.uris } : { none: Date.now() }
+  const result = best ? { id: best.id, uris: best.uris, seconds: best.seconds } : null
+  known[rec.releaseId] = result || { none: Date.now() }
   write(ALBUMS, known)
-  return best ? { id: best.id, uris: best.uris } : null
+  return result
+}
+
+/**
+ * The sides with Spotify's lengths filling in where Discogs has none, once the album
+ * has been found. Without lengths, the grooves can only be guessed at.
+ */
+export function filled(rec: Rec, sides: Side[]): Side[] {
+  const hit = read<Record<string, Found | { none: number }>>(ALBUMS)?.[rec.releaseId]
+  if (!hit || !('seconds' in hit) || !hit.seconds) return sides
+  let start = 0
+  return sides.map((s) => {
+    const side = withLengths(s, hit.seconds.slice(start, start + s.tracks.length)) as Side
+    start += s.tracks.length
+    return side
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -251,12 +270,24 @@ export function wake() {
   player?.activateElement?.()
 }
 
-/** Play a side from a track and a point in it. Returns why not, if it can't. */
-export async function drop(rec: Rec, face: number, sides: Side[], track: number, seconds: number): Promise<string | null> {
+/**
+ * Play a side from where the needle went down. Where that is depends on the track
+ * lengths, which may only be known once the album is found, so `at` is asked then.
+ * Returns why not, if it can't.
+ */
+export async function drop(
+  rec: Rec,
+  face: number,
+  sides: Side[],
+  at: (side: Side) => { track: number; offset: number } | null,
+): Promise<string | null> {
   if (!state.connected) return 'Connect Spotify in Settings to play your records'
   if (!state.ready || !deviceId) return 'Spotify is still starting up'
   const album = await findAlbum(rec, sides).catch(() => null)
   if (!album) return "Couldn't find this album on Spotify"
+  const where = at(filled(rec, sides)[face])
+  if (!where) return null
+  const { track, offset: seconds } = where
   const start = sides.slice(0, face).reduce((n, s) => n + s.tracks.length, 0)
   const uris = album.uris.slice(start, start + sides[face].tracks.length)
   if (!uris[track]) return "That track isn't on Spotify's version"

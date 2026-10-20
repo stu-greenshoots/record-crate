@@ -6,7 +6,7 @@ import { warmUp } from '../recognise'
 import { alongWords, cubePlace, fractionAlong, yearOf } from '../where'
 import type { BuiltMap, Face, Rec, Side } from '../types'
 import { grooves, radiusAt, timeAt } from '../../shared/needle.js'
-import { drop as dropNeedle, lift, sidesOf, stop, useSpotify, wake } from '../spotify'
+import { drop as dropNeedle, filled, lift, sidesOf, stop, useSpotify, wake } from '../spotify'
 import { Sleeve } from './Sleeve'
 import { RecordLabel } from './Label'
 import { SearchPanel } from './SearchPanel'
@@ -209,12 +209,19 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
       live = false
     }
   }, [rec])
-  const side = sides?.id === id ? sides.sides[face] : undefined
+  const spotify = useSpotify()
+  const now = spotify.now
+  // Spotify's track lengths, once the album has been found, where Discogs has none.
+  const known = useMemo(
+    () => (rec && sides?.id === rec.id ? filled(rec, sides.sides) : undefined),
+    // `now` changes once the album has been found and played.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rec, sides, now?.recId],
+  )
+  const side = known?.[face]
   const span = grooves(rec?.inches)
 
   // The needle: down where Spotify says it is, creeping in as the side plays.
-  const spotify = useSpotify()
-  const now = spotify.now
   const needleHere = rec && now && now.recId === rec.id && now.face === face && now.track >= 0 && side ? now : null
   const [, tick] = useState(0)
   useEffect(() => {
@@ -233,12 +240,10 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
     const box = stage.current!.getBoundingClientRect()
     const d = (g.d * (rec.inches || 12)) / 12
     const r = Math.hypot(e.clientX - box.left - g.cx, e.clientY - box.top - g.cy) / (d / 2)
-    if (!side) return
-    const at = timeAt(r, side, span)
-    if (!at) return
+    if (!side || r < span.inner) return
     // Before anything is awaited: iOS only starts audio inside the touch.
     wake()
-    dropNeedle(rec, face, sides!.sides, at.track, at.offset).then((why) => why && toast(why))
+    dropNeedle(rec, face, sides!.sides, (s) => timeAt(r, s, span)).then((why) => why && toast(why))
   }
 
   const turnOver = () => {

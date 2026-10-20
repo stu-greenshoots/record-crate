@@ -22,7 +22,7 @@ function pairScore(want, got) {
  * Discogs tracks [{ title, seconds }] against Spotify's [{ name, duration_ms, uri }],
  * both in playing order: the best in-order pairing (an alignment, so extra tracks on
  * either side are skipped).
- *   -> { uris: one per Discogs track, or null, score: share of tracks matched }
+ *   -> { uris, seconds: one each per Discogs track, or null; score: share of tracks matched }
  */
 export function align(want, got) {
   const n = want.length
@@ -35,18 +35,20 @@ export function align(want, got) {
     }
   }
   const uris = new Array(n).fill(null)
+  const seconds = new Array(n).fill(null)
   let matched = 0
   for (let i = 0, j = 0; i < n && j < m; ) {
     const p = pairScore(want[i], got[j])
     if (p > 0 && best[i][j] === p + best[i + 1][j + 1]) {
       uris[i] = got[j].uri
+      seconds[i] = Math.round(got[j].duration_ms / 1000)
       matched++
       i++
       j++
     } else if (best[i][j] === best[i + 1][j]) i++
     else j++
   }
-  return { uris, score: n ? matched / n : 0 }
+  return { uris, seconds, score: n ? matched / n : 0 }
 }
 
 /** Of several albums [{ id, tracks }], the one that lines up best, if any is good enough. */

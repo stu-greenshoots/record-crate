@@ -1,4 +1,4 @@
-import { grooves, radiusAt, timeAt, lengths } from '../shared/needle.js'
+import { grooves, radiusAt, timeAt, lengths, withLengths } from '../shared/needle.js'
 
 let pass = 0
 let fail = 0
@@ -17,7 +17,7 @@ ok(single.inner > lp.inner, 'a 7" label takes more of the record, so its grooves
 const a = side(100, 300, 200)
 ok(lengths(a).join() === '100,300,200', 'track lengths as given')
 ok(lengths(side(100, null, 200)).join() === '100,150,200', 'a missing length is the average of the known ones')
-ok(lengths(side(null, null)).join() === '1,1', 'no lengths at all: equal bands')
+ok(lengths(side(null, null)).join() === '600,600', 'no lengths at all: a typical 20-minute side, in equal bands')
 
 let t = timeAt(lp.outer, a, lp)
 ok(t.track === 0 && t.offset === 0, 'the outer edge is the start of the first track')
@@ -36,6 +36,12 @@ ok(timeAt(lp.inner - 0.05, a, lp) === null, 'touching the run-out or the label p
 ok(near(radiusAt(1, 150, a, lp), mid, 0.002), 'and back again: a time gives the radius the needle sits at')
 ok(near(radiusAt(0, 0, a, lp), lp.outer), 'the first track starts at the edge')
 ok(timeAt(0.8, { side: 'A', tracks: [] }, lp) === null, 'a side with no known tracks plays nothing')
+ok(near(radiusAt(0, 500, a, lp), radiusAt(1, 0, a, lp), 0.0001), "the needle doesn't run past the end of the track it's on")
+const quiet = side(null, null, null)
+const r1 = radiusAt(0, 60, quiet, lp)
+ok(lp.outer - r1 < (lp.outer - lp.inner) * 0.06, 'with no lengths, a minute in moves the needle a few percent of the way, not across the record', String(lp.outer - r1))
+ok(withLengths(side(null, 200), [300, 180]).tracks.map((t) => t.seconds).join() === '300,200', "Spotify's lengths fill the gaps; Discogs' own are kept")
+ok(withLengths(side(null), [null]).tracks[0].seconds === null, 'and no length from either stays unknown')
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail ? 1 : 0)

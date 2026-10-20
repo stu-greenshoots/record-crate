@@ -19,11 +19,19 @@ export function grooves(inches = 12) {
   return { outer: 0.96, inner: label + 0.05 }
 }
 
+// A typical LP side, for a track list with no lengths at all.
+const SIDE = 20 * 60
+
 /** Each track's length in seconds; a missing one is the average of the rest. */
 export function lengths(side) {
   const known = side.tracks.map((t) => t.seconds).filter((s) => s > 0)
-  const fill = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 1
+  const fill = known.length ? known.reduce((a, b) => a + b, 0) / known.length : SIDE / Math.max(1, side.tracks.length)
   return side.tracks.map((t) => (t.seconds > 0 ? t.seconds : fill))
+}
+
+/** The side with lengths filled in from elsewhere (Spotify's), where Discogs has none. */
+export function withLengths(side, seconds) {
+  return { ...side, tracks: side.tracks.map((t, i) => (t.seconds > 0 || !(seconds[i] > 0) ? t : { ...t, seconds: seconds[i] })) }
 }
 
 /** The track and seconds into it at radius r, or null off the playing surface. */
@@ -48,5 +56,5 @@ export function radiusAt(track, offset, side, span) {
   const lens = lengths(side)
   const total = lens.reduce((a, b) => a + b, 0)
   const before = lens.slice(0, track).reduce((a, b) => a + b, 0)
-  return span.outer - ((before + offset) / total) * (span.outer - span.inner)
+  return span.outer - ((before + Math.min(offset, lens[track] ?? 0)) / total) * (span.outer - span.inner)
 }
