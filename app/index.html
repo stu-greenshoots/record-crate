@@ -13,6 +13,11 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-180.png" />
+    <script>
+      // Spotify returns its sign-in to this page, the one address registered with it;
+      // the playback test page is where it belongs.
+      if (/[?&]state=spike-/.test(location.search)) location.replace('spike/play.html' + location.search)
+    </script>
   </head>
   <body>
     <div id="root"></div>
