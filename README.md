@@ -109,6 +109,13 @@ changing the detector or `identify/tests/labels-truth.json`, measure with
 `.venv/bin/python -m identify.labels --build --all`. A record with no label photo
 gets a plain printed label.
 
+On a coloured, clear or picture disc there are no dark grooves to find the label
+inside, so the "label" it crops can be the whole record. `identify/discs.py` tells
+those apart (a probe on each crop's embedding, trained on
+`identify/tests/disc-truth.json`), and the turntable draws them across the whole
+platter. Measure with `.venv/bin/python -m identify.discs`; it fails if any label
+would be shown as a disc.
+
 `fetch-details.mjs` only fetches what's missing: each album's vinyl versions (for the
 pressing verdicts, `shared/pressing.js`), price suggestions, and each artist's
 MusicBrainz release groups and members (`shared/discography.js` matches them to your

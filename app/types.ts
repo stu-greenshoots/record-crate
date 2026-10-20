@@ -21,6 +21,8 @@ export interface Rec {
   colour?: string | null
   /** The centre label, cropped to its circle, where a photo of it was found. */
   labelArt?: string | null
+  /** The label photo is really the whole record (a coloured or picture disc, say). */
+  labelDisc?: boolean
   /** Who plays on, engineers or produces it: [index into Snapshot.people, kinds]. */
   people?: [number, number][]
   masterId?: number | null

@@ -1,8 +1,10 @@
 /**
  * DINOv2 embeddings of every downloaded label-candidate photo, for telling label
- * photos from the rest (identify/labels.py).
+ * photos from the rest (identify/labels.py), or of the label crops, for telling the
+ * ones that are really the whole record (identify/discs.py).
  *
- *   node scripts/embed-label-photos.mjs   # data/label-src/*.jpg -> data/label-src-embed.json
+ *   node scripts/embed-label-photos.mjs           # data/label-src/*.jpg -> data/label-src-embed.json
+ *   node scripts/embed-label-photos.mjs --crops   # data/label-crops/*.jpg -> data/label-crops-embed.json
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -10,8 +12,9 @@ import { AutoProcessor, AutoModel, RawImage } from '@huggingface/transformers'
 import { DATA_DIR } from '../server/config.js'
 import { MODEL_ID, embedFrom } from '../shared/embed.js'
 
-const SRC = path.join(DATA_DIR, 'label-src')
-const OUT = path.join(DATA_DIR, 'label-src-embed.json')
+const which = process.argv.includes('--crops') ? 'label-crops' : 'label-src'
+const SRC = path.join(DATA_DIR, which)
+const OUT = path.join(DATA_DIR, `${which}-embed.json`)
 const done = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {}
 const processor = await AutoProcessor.from_pretrained(MODEL_ID)
 const model = await AutoModel.from_pretrained(MODEL_ID, { dtype: 'q8' })

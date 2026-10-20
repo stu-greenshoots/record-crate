@@ -35,6 +35,9 @@ function cachedImage(url) {
 // Centre labels, cropped by identify/labels.py --build. Optional: without one the app
 // prints a plain label.
 const LABELS = path.join(OUT, 'labels')
+// Label crops that are really the whole record (identify/discs.py).
+const DISCS = path.join(DATA_DIR, 'discs.json')
+const discs = new Set(fs.existsSync(DISCS) ? JSON.parse(fs.readFileSync(DISCS, 'utf8')).discs.map(Number) : [])
 
 const records = allRecords()
 
@@ -122,6 +125,7 @@ const out = records.map((r) => {
     artistId: r.artistId || null,
     ...pressFields(pressings.get(r.releaseId)),
     labelArt: fs.existsSync(path.join(LABELS, `${r.releaseId}.webp`)) ? `labels/${r.releaseId}.webp` : null,
+    labelDisc: discs.has(r.releaseId) || undefined,
   }
 })
 
@@ -201,7 +205,7 @@ fs.writeFileSync(path.join(OUT, 'data', 'collection.json'), JSON.stringify(snaps
 const missing = out.filter((r) => !r.cover).length
 const labelled = out.filter((r) => r.labelArt).length
 const nobody = out.filter((r) => !r.people.length).length
-console.log(`${out.length} records, ${out.length - missing} covers (${missing} missing), ${labelled} labels`)
+console.log(`${out.length} records, ${out.length - missing} covers (${missing} missing), ${labelled} labels (${out.filter((r) => r.labelDisc).length} of them the whole disc)`)
 console.log(`${people.length} people credited, ${nobody} records with nobody listed`)
 const verdicts = {}
 for (const r of out) verdicts[r.press || 'no detail'] = (verdicts[r.press || 'no detail'] || 0) + 1

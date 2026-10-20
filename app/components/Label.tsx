@@ -3,17 +3,18 @@ import type { Rec } from '../types'
 
 /**
  * The record's centre label: the photo from Discogs, cropped to the circle, where the
- * snapshot found one. Otherwise a plain label printed from what we know, coloured
+ * snapshot found one. Where that photo is of the whole record (a coloured or picture
+ * disc), it covers the platter instead. Otherwise a plain label printed from what we know, coloured
  * from the sleeve so the middle of the platter never looks like a hole.
  */
 export function RecordLabel({ rec }: { rec: Rec }) {
   const [failed, setFailed] = useState(false)
   if (rec.labelArt && !failed) {
     return (
-      <span className="disc-label">
+      <span className={`disc-label ${rec.labelDisc ? 'whole' : ''}`}>
         <img
           src={`${import.meta.env.BASE_URL}${rec.labelArt}`}
-          alt={`Label of ${rec.title}`}
+          alt={rec.labelDisc ? `The record, ${rec.title}` : `Label of ${rec.title}`}
           draggable={false}
           onError={() => setFailed(true)}
         />
