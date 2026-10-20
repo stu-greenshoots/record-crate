@@ -441,6 +441,7 @@ export function Deck({
                     ((g.d * (platter.inches || 12)) / 24)
                   : null
               }
+              hold={Boolean(platter && now?.recId === platter.id)}
               lifted={Boolean(needleHere?.paused)}
               title={needleHere && side ? side.tracks[needleHere.track]?.title : undefined}
             />
@@ -696,17 +697,36 @@ function Bands({ side, span }: { side: Side; span: { outer: number; inner: numbe
  * rests at the side. Tap the headshell to lift it, and again to put it back down.
  *   r: the radius it's playing at, in pixels from the spindle, or null at rest
  */
-function Tonearm({ g, r, lifted, title }: { g: Geometry; r: number | null; lifted: boolean; title?: string }) {
+function Tonearm({ g, r, hold, lifted, title }: { g: Geometry; r: number | null; hold: boolean; lifted: boolean; title?: string }) {
+  // While this record is still playing, a moment with no groove to follow (turning
+  // to the other side, Spotify between tracks) holds the arm where it was; only
+  // stopping, or a few seconds of not knowing, sends it back to rest.
+  const last = useRef<number | null>(null)
+  const [gone, setGone] = useState(false)
+  if (r != null) last.current = r
+  useEffect(() => {
+    if (r != null || !hold) return setGone(false)
+    const t = setTimeout(() => setGone(true), 3000)
+    return () => clearTimeout(t)
+  }, [r == null, hold])
+  const groove = r ?? (hold && !gone ? last.current : null)
+
   const R = g.d / 2
   const px = g.cx + R * 0.97
   const py = g.cy - R * 0.55
   const len = R * 0.95
-  const at = r != null ? reach(px, py, len, g.cx, g.cy, r) : null
+  const at = groove != null ? reach(px, py, len, g.cx, g.cy, groove) : null
   // At rest it hangs straight down, clear of the record's edge.
   const angle = at ? armAngle(px, py, at) : 90
+  // Creeping in with the music it follows linearly; a jump to another track glides.
+  const was = useRef(angle)
+  const gliding = useRef(0)
+  if (Math.abs(angle - was.current) > 1.5) gliding.current = Date.now() + 900
+  was.current = angle
+  const jump = Date.now() < gliding.current
   return (
     <div
-      className={`tonearm ${at ? 'down' : ''} ${lifted ? 'lifted' : ''}`}
+      className={`tonearm ${at ? 'down' : ''} ${jump ? 'jump' : ''} ${lifted ? 'lifted' : ''}`}
       style={{ left: px, top: py, width: len, transform: `rotate(${angle}deg)` }}
     >
       <span className="tonearm-rod" aria-hidden />
