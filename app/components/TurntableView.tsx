@@ -47,6 +47,12 @@ export function TurntableView({ id }: { id: number | null }) {
     else noteLookup(id)
   }, [id])
 
+  // The turntable with nothing chosen shows what's playing, if anything is.
+  const playing = useSpotify().now
+  useEffect(() => {
+    if (id == null && playing) go(playing.route, true)
+  }, [id, playing?.route])
+
   const order = useMemo(() => (store ? store.built.slots.flatMap((c) => c.instanceIds) : []), [store?.built])
   if (!store) return <div className="page loading"><span className="spinner-disc" /></div>
 
