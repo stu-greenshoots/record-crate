@@ -59,9 +59,14 @@ function labelFields(releaseId) {
 function facesOf(releaseId) {
   const file = path.join(DATA_DIR, 'releases', `${releaseId}.json`)
   const detail = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null
+  return sidesOf(detail).map((s, i) => ({ side: s.side, ...art(i ? `${releaseId}-${i + 1}` : String(releaseId)) }))
+}
+
+/** The sides and their tracks, counting the records in the package for a list that names no sides. */
+function sidesOf(detail) {
   const vinyl = (detail?.formats || []).filter((f) => /vinyl|lathe|acetate|flexi/i.test(f.name || ''))
   const count = vinyl.reduce((n, f) => n + (Number(f.qty) || 1), 0) || 1
-  return sides(detail?.tracklist, count).map((s, i) => ({ side: s.side, ...art(i ? `${releaseId}-${i + 1}` : String(releaseId)) }))
+  return sides(detail?.tracklist, count)
 }
 
 const records = allRecords()
@@ -84,6 +89,8 @@ for (const r of records) {
   const price = (k) => round(suggestions[k]?.value)
   const press = versions ? verdict(detail, versions.versions, r.originalYear, mainReleases[r.masterId] ?? null) : null
   const file = {
+    // What's on each side, for the needle (shared/needle.js) and for finding it on Spotify.
+    sides: sidesOf(detail),
     verdict: press,
     versionCount: versions?.total ?? null,
     released: detail.released || null,

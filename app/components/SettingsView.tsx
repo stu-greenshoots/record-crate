@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { backupText, restoreBackup, setMap, update, upsertShelf, useStore } from '../store'
 import { back, go } from '../route'
 import { refresh, useCheckProgress } from '../discogs'
+import { connect, disconnect, useSpotify } from '../spotify'
 import type { ShelfMapConfig, SlotConfig, SplitMode } from '../types'
 import { BackIcon, ChevronIcon } from './Icons'
 import { UnitMap } from './UnitMap'
@@ -228,6 +229,8 @@ export function SettingsView() {
         </p>
       </section>
 
+      <SpotifyPanel />
+
       <section className="panel">
         <h2 className="panel-title">This phone</h2>
         <p className="panel-sub">
@@ -401,4 +404,28 @@ async function saveBackup() {
   a.download = file.name
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+/** Signing in once so the turntable can play: touch the grooves to drop the needle. */
+function SpotifyPanel() {
+  const spotify = useSpotify()
+  return (
+    <section className="panel">
+      <h2 className="panel-title">Spotify</h2>
+      <p className="panel-sub">
+        {spotify.connected
+          ? `Connected${spotify.name ? ` as ${spotify.name}` : ''}. Touch a record's grooves on the turntable to play it from there; tap the needle to lift it.`
+          : 'Connect your Spotify Premium account, and touching a record on the turntable plays it from that point.'}
+      </p>
+      {spotify.connected ? (
+        <button type="button" className="link-btn" onClick={disconnect}>
+          Disconnect Spotify
+        </button>
+      ) : (
+        <button type="button" className="btn btn-secondary" onClick={() => connect()}>
+          Connect Spotify
+        </button>
+      )}
+    </section>
+  )
 }

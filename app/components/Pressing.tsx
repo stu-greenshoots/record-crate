@@ -5,6 +5,18 @@ import { CheckIcon } from './Icons'
 
 const cache = new Map<number, Pressing | null>()
 
+/** The pressing notes for a release, fetched once and kept (null where there are none). */
+export function loadPressing(releaseId: number): Promise<Pressing | null> {
+  if (cache.has(releaseId)) return Promise.resolve(cache.get(releaseId)!)
+  return fetch(`${import.meta.env.BASE_URL}pressings/${releaseId}.json`)
+    .then((res) => (res.ok ? res.json() : null))
+    .catch(() => null)
+    .then((p) => {
+      cache.set(releaseId, p)
+      return p
+    })
+}
+
 /** The pressing notes for a release, fetched once and kept (offline too, via the worker). */
 function usePressing(releaseId: number) {
   const [data, setData] = useState<Pressing | null | undefined>(() => cache.get(releaseId))
@@ -15,13 +27,9 @@ function usePressing(releaseId: number) {
     }
     let live = true
     setData(undefined)
-    fetch(`${import.meta.env.BASE_URL}pressings/${releaseId}.json`)
-      .then((res) => (res.ok ? res.json() : null))
-      .catch(() => null)
-      .then((p) => {
-        cache.set(releaseId, p)
-        if (live) setData(p)
-      })
+    loadPressing(releaseId).then((p) => {
+      if (live) setData(p)
+    })
     return () => {
       live = false
     }

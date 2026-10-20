@@ -1974,6 +1974,38 @@ body.typing .page {
   box-shadow: 0 0 0 2px #0e0d0d;
 }
 
+/* The gaps between tracks on a drawn record. */
+.bands {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* The needle, where the side is playing. It stays put while the record turns under it. */
+.needle {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: radial-gradient(circle, var(--amber) 0 4px, rgba(224, 173, 72, 0.35) 5px 7px, transparent 8px);
+  cursor: pointer;
+  transition: left 0.5s linear, top 0.5s linear, transform 0.25s, opacity 0.25s;
+}
+
+.needle.lifted {
+  transform: translateY(-6px) scale(1.15);
+  opacity: 0.6;
+}
+
+.needle:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
 /* A coloured disc's vinyl, from the other side's photo, round this side's label. */
 .disc-under {
   position: absolute;

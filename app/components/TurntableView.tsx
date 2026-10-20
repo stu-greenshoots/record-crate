@@ -4,7 +4,9 @@ import type { Derived } from '../store'
 import { go } from '../route'
 import { warmUp } from '../recognise'
 import { alongWords, cubePlace, fractionAlong, yearOf } from '../where'
-import type { BuiltMap, Face, Rec } from '../types'
+import type { BuiltMap, Face, Rec, Side } from '../types'
+import { grooves, radiusAt, timeAt } from '../../shared/needle.js'
+import { drop as dropNeedle, lift, sidesOf, stop, useSpotify, wake } from '../spotify'
 import { Sleeve } from './Sleeve'
 import { RecordLabel } from './Label'
 import { SearchPanel } from './SearchPanel'
@@ -197,8 +199,51 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
   const face = up.id === id ? up.i % faces.length : 0
   const discEl = useRef<HTMLDivElement>(null)
   const turning = useRef(false)
+  // What's on each side, for where a touch on the grooves lands.
+  const [sides, setSides] = useState<{ id: number; sides: Side[] } | null>(null)
+  useEffect(() => {
+    if (!rec) return
+    let live = true
+    sidesOf(rec).then((s) => live && setSides({ id: rec.id, sides: s }))
+    return () => {
+      live = false
+    }
+  }, [rec])
+  const side = sides?.id === id ? sides.sides[face] : undefined
+  const span = grooves(rec?.inches)
+
+  // The needle: down where Spotify says it is, creeping in as the side plays.
+  const spotify = useSpotify()
+  const now = spotify.now
+  const needleHere = rec && now && now.recId === rec.id && now.face === face && now.track >= 0 && side ? now : null
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!needleHere || needleHere.paused) return
+    const t = setInterval(() => tick((n) => n + 1), 500)
+    return () => clearInterval(t)
+  }, [needleHere])
+  // Another record on the platter takes the needle off the last one.
+  useEffect(() => {
+    if (now && now.recId !== id) stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  const onGroove = (e: React.MouseEvent) => {
+    if (!rec || (e.target as HTMLElement).closest('.label-hit')) return
+    const box = stage.current!.getBoundingClientRect()
+    const d = (g.d * (rec.inches || 12)) / 12
+    const r = Math.hypot(e.clientX - box.left - g.cx, e.clientY - box.top - g.cy) / (d / 2)
+    if (!side) return
+    const at = timeAt(r, side, span)
+    if (!at) return
+    // Before anything is awaited: iOS only starts audio inside the touch.
+    wake()
+    dropNeedle(rec, face, sides!.sides, at.track, at.offset).then((why) => why && toast(why))
+  }
+
   const turnOver = () => {
     if (turning.current || faces.length < 2) return
+    if (now?.recId === id) stop()
     const next = (face + 1) % faces.length
     const el = discEl.current
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -342,7 +387,9 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
             ref={discEl}
             className={`disc ${rec ? 'on' : 'empty'}`}
             style={discStyle(g, rec?.inches)}
+            onClick={onGroove}
           >
+            {side && !faces[face].disc && !faces[face].under && <Bands side={side} span={span} />}
             {rec ? <RecordLabel key={`${rec.id}-${face}`} rec={rec} face={faces[face]} /> : <span className="disc-label blank" />}
             {rec && faces.length > 1 && (
               <button
@@ -356,6 +403,23 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
             )}
           </div>
           <span className="spindle" aria-hidden style={{ left: g.cx, top: g.cy }} />
+          {needleHere && side && rec && (
+            <Needle
+              x={g.cx}
+              y={g.cy}
+              r={
+                radiusAt(
+                  needleHere.track,
+                  (needleHere.position + (needleHere.paused ? 0 : Date.now() - needleHere.at)) / 1000,
+                  side,
+                  span,
+                ) *
+                ((g.d * (rec.inches || 12)) / 24)
+              }
+              lifted={needleHere.paused}
+              title={side.tracks[needleHere.track]?.title}
+            />
+          )}
           {wide && (
             <span
               className="arm"
@@ -588,4 +652,34 @@ function facesOf(rec: Rec | null): Face[] {
     const other = faces[i ^ 1]
     return !f.disc && other?.disc && other.art ? { ...f, under: other.art } : f
   })
+}
+
+/** The gaps between tracks, catching the light, on a record drawn rather than photographed. */
+function Bands({ side, span }: { side: Side; span: { outer: number; inner: number } }) {
+  const rings = side.tracks.slice(1).map((_, i) => radiusAt(i + 1, 0, side, span) * 100)
+  const edge = [span.outer * 100, span.inner * 100]
+  const ring = (at: number, w: number, a: number) =>
+    `radial-gradient(circle closest-side, transparent ${at - w}%, rgba(255,255,255,${a}) ${at - w}%, rgba(255,255,255,${a}) ${at}%, transparent ${at}%)`
+  return (
+    <span
+      className="bands"
+      aria-hidden
+      style={{ background: [...rings.map((r) => ring(r, 0.9, 0.08)), ...edge.map((r) => ring(r, 0.5, 0.05))].join(', ') }}
+    />
+  )
+}
+
+/** Where the needle is on the record. Tap it to lift it, and again to put it back. */
+function Needle({ x, y, r, lifted, title }: { x: number; y: number; r: number; lifted: boolean; title?: string }) {
+  // Up and to the right of the spindle, where the arm comes in.
+  const a = (-55 * Math.PI) / 180
+  return (
+    <button
+      type="button"
+      className={`needle ${lifted ? 'lifted' : ''}`}
+      style={{ left: x + r * Math.cos(a), top: y + r * Math.sin(a) }}
+      aria-label={lifted ? `Put the needle back down${title ? ` on ${title}` : ''}` : `Lift the needle${title ? `, playing ${title}` : ''}`}
+      onClick={lift}
+    />
+  )
 }

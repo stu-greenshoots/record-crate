@@ -118,7 +118,20 @@ export interface Spot {
 export type PressKind = 'first' | 'same-year' | 'first-local' | 'first-vinyl' | 'reissue' | 'repress' | 'unofficial' | 'unknown'
 
 /** public/pressings/<releaseId>.json: everything known about one pressing. */
+export interface Track {
+  position: string
+  title: string
+  seconds: number | null
+}
+
+export interface Side {
+  side: string
+  tracks: Track[]
+}
+
 export interface Pressing {
+  /** What's on each side, in playing order (shared/sides.js). */
+  sides?: Side[]
   verdict: {
     kind: PressKind
     text: string
