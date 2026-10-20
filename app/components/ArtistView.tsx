@@ -200,7 +200,7 @@ function AlbumRow({ album, store }: { album: Album; store: NonNullable<ReturnTyp
   return (
     <li>
       <a className="result missing" href={href} target="_blank" rel="noreferrer">
-        <span className="result-sleeve sleeve missing-sleeve" aria-hidden />
+        <MissingSleeve id={album.id} />
         <span className="result-text">
           <span className="result-title">{album.title}</span>
           <span className="result-artist">{album.year || ''}</span>
@@ -226,4 +226,22 @@ function years(begin: string | null, end: string | null) {
   const e = end?.slice(0, 4)
   if (!b && !e) return ''
   return `${b || '?'}–${e || ''}`
+}
+
+/**
+ * The cover of an album you don't have, from the Cover Art Archive (MusicBrainz's
+ * sister project, keyed by the same release-group id), or an empty sleeve without one.
+ */
+function MissingSleeve({ id }: { id: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <span className="result-sleeve sleeve missing-sleeve" aria-hidden />
+  return (
+    <img
+      className="result-sleeve sleeve missing-art"
+      src={`https://coverartarchive.org/release-group/${id}/front-250`}
+      alt=""
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  )
 }

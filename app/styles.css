@@ -2888,6 +2888,15 @@ body.typing .page {
   background: transparent !important;
 }
 
+/* A cover you don't have: shown, but a little faded beside the ones you do. */
+.missing-art {
+  display: block;
+  aspect-ratio: 1;
+  object-fit: cover;
+  opacity: 0.75;
+  filter: saturate(0.6);
+}
+
 .missing-chip {
   flex: none;
   padding: 3px 9px;
