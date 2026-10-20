@@ -1,4 +1,4 @@
-import { grooves, radiusAt, timeAt, lengths, withLengths } from '../shared/needle.js'
+import { grooves, radiusAt, reach, timeAt, lengths, withLengths } from '../shared/needle.js'
 
 let pass = 0
 let fail = 0
@@ -42,6 +42,18 @@ const r1 = radiusAt(0, 60, quiet, lp)
 ok(lp.outer - r1 < (lp.outer - lp.inner) * 0.06, 'with no lengths, a minute in moves the needle a few percent of the way, not across the record', String(lp.outer - r1))
 ok(withLengths(side(null, 200), [300, 180]).tracks.map((t) => t.seconds).join() === '300,200', "Spotify's lengths fill the gaps; Discogs' own are kept")
 ok(withLengths(side(null), [null]).tracks[0].seconds === null, 'and no length from either stays unknown')
+
+// An arm pivoting up and to the right of a record at the origin, radius 100.
+const P = [97, -55]
+const L = 95
+let n = reach(P[0], P[1], L, 0, 0, 60)
+ok(n && near(Math.hypot(n.x - P[0], n.y - P[1]), L, 1e-6) && near(Math.hypot(n.x, n.y), 60, 1e-6), 'the needle is an arm\'s length from the pivot, on the groove asked for', JSON.stringify(n))
+const both = [reach(P[0], P[1], L, 0, 0, 60), reach(P[0], P[1], L, 0, 0, 96)]
+ok(both.every((p) => p.y < 0), 'it comes down on the top of the record, the part that shows')
+ok(reach(P[0], P[1], L, 0, 0, 5) === null, "a groove the arm can't reach: none")
+const outer = reach(P[0], P[1], L, 0, 0, 96)
+const inner = reach(P[0], P[1], L, 0, 0, 41)
+ok(Math.atan2(inner.y - P[1], inner.x - P[0]) !== Math.atan2(outer.y - P[1], outer.x - P[0]), 'the arm swings in as the side plays')
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail ? 1 : 0)

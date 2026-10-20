@@ -5,7 +5,7 @@ import { go } from '../route'
 import { warmUp } from '../recognise'
 import { alongWords, cubePlace, fractionAlong, yearOf } from '../where'
 import type { BuiltMap, Face, Rec, Side } from '../types'
-import { grooves, radiusAt, timeAt } from '../../shared/needle.js'
+import { grooves, radiusAt, reach, timeAt } from '../../shared/needle.js'
 import { drop as dropNeedle, filled, lift, sidesOf, stop, useSpotify, wake } from '../spotify'
 import { Sleeve } from './Sleeve'
 import { RecordLabel } from './Label'
@@ -46,12 +46,6 @@ export function TurntableView({ id }: { id: number | null }) {
     if (spunTo === id) spunTo = null
     else noteLookup(id)
   }, [id])
-
-  // The turntable with nothing chosen shows what's playing, if anything is.
-  const playing = useSpotify().now
-  useEffect(() => {
-    if (id == null && playing) go(playing.route, true)
-  }, [id, playing?.route])
 
   const order = useMemo(() => (store ? store.built.slots.flatMap((c) => c.instanceIds) : []), [store?.built])
   if (!store) return <div className="page loading"><span className="spinner-disc" /></div>
@@ -201,10 +195,16 @@ export function Deck({
   const gesture = useRef<{ start: number; last: number; t: number; v: number; moved: boolean } | null>(null)
   const swallowClick = useRef(false)
 
+  // What's on the platter: while a record is playing, that one, whichever record's
+  // page you're looking at, as on a real turntable; otherwise the one you've chosen.
+  const spotify = useSpotify()
+  const now = spotify.now
+  const platter = now?.rec ?? rec
+
   // A record put on by search or the camera is lowered onto the platter; one reached
   // by spinning the ring just swaps its label, or a fast spin would keep re-dropping.
   const seen = useRef<{ id: number | null; drop: number }>({ id: null, drop: 0 })
-  const id = rec?.id ?? null
+  const id = platter?.id ?? null
   if (id !== seen.current.id) {
     if (spunTo !== id) seen.current.drop++
     seen.current.id = id
@@ -213,7 +213,7 @@ export function Deck({
 
   // Which side is up. Tapping the label turns the record over; on a set, the side after
   // B is the next record's A side (C), and so on round.
-  const faces = useMemo(() => facesOf(rec), [rec])
+  const faces = useMemo(() => facesOf(platter), [platter])
   const [up, setUp] = useState<{ id: number | null; i: number }>({ id: null, i: 0 })
   const face = up.id === id ? up.i % faces.length : 0
   const discEl = useRef<HTMLDivElement>(null)
@@ -221,27 +221,25 @@ export function Deck({
   // What's on each side, for where a touch on the grooves lands.
   const [sides, setSides] = useState<{ id: number; sides: Side[] } | null>(null)
   useEffect(() => {
-    if (!rec) return
+    if (!platter) return
     let live = true
-    sidesOf(rec).then((s) => live && setSides({ id: rec.id, sides: s }))
+    sidesOf(platter).then((s) => live && setSides({ id: platter.id, sides: s }))
     return () => {
       live = false
     }
-  }, [rec])
-  const spotify = useSpotify()
-  const now = spotify.now
+  }, [platter])
   // Spotify's track lengths, once the album has been found, where Discogs has none.
   const known = useMemo(
-    () => (rec && sides?.id === rec.id ? filled(rec, sides.sides) : undefined),
+    () => (platter && sides?.id === platter.id ? filled(platter, sides.sides) : undefined),
     // `now` changes once the album has been found and played.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rec, sides, now?.recId],
+    [platter, sides, now?.recId],
   )
   const side = known?.[face]
-  const span = grooves(rec?.inches)
+  const span = grooves(platter?.inches)
 
   // The needle: down where Spotify says it is, creeping in as the side plays.
-  const needleHere = rec && now && now.recId === rec.id && now.face === face && now.track >= 0 && side ? now : null
+  const needleHere = platter && now && now.recId === platter.id && now.face === face && now.track >= 0 && side ? now : null
   const [, tick] = useState(0)
   useEffect(() => {
     if (!needleHere || needleHere.paused) return
@@ -255,14 +253,15 @@ export function Deck({
   }, [now?.recId, now?.face])
 
   const onGroove = (e: React.MouseEvent) => {
-    if (!rec || (e.target as HTMLElement).closest('.label-hit')) return
+    if (!platter || (e.target as HTMLElement).closest('.label-hit')) return
     const box = stage.current!.getBoundingClientRect()
-    const d = (g.d * (rec.inches || 12)) / 12
+    const d = (g.d * (platter.inches || 12)) / 12
     const r = Math.hypot(e.clientX - box.left - g.cx, e.clientY - box.top - g.cy) / (d / 2)
     if (!side || r < span.inner) return
     // Before anything is awaited: iOS only starts audio inside the touch.
     wake()
-    dropNeedle(rec, face, sides!.sides, (s) => timeAt(r, s, span), route).then((why) => why && toast(why))
+    const where = now?.recId === platter.id ? now.route : route
+    dropNeedle(platter, face, sides!.sides, (s) => timeAt(r, s, span), where).then((why) => why && toast(why))
   }
 
   const turnOver = () => {
@@ -365,9 +364,6 @@ export function Deck({
     // the ring from where they really are rather than appearing in place.
     .filter(({ off }) => Math.abs(off) <= SHOWN + FLING + 1)
 
-  const spot = rec ? store.spots.get(rec.id) : null
-  // The arm tracks the needle across the record as you walk along the cube.
-  const arm = rec ? 16 + (spot ? fractionAlong(spot, store.byId) : 0.5) * 16 : -6
 
   return (
     <section
@@ -407,15 +403,19 @@ export function Deck({
           )}
           <span className="platter" aria-hidden style={{ left: g.cx - g.d / 2 - 10, top: g.cy - g.d / 2 - 10, width: g.d + 20, height: g.d + 20 }} />
           <div
-            key={rec ? `on-${drop}-${Math.floor(face / 2)}` : 'empty'}
+            key={platter ? `on-${drop}-${Math.floor(face / 2)}` : 'empty'}
             ref={discEl}
-            className={`disc ${rec ? 'on' : 'empty'}`}
-            style={discStyle(g, rec?.inches)}
+            className={`disc ${platter ? 'on' : 'empty'}`}
+            style={discStyle(g, platter?.inches)}
             onClick={onGroove}
           >
             {side && !faces[face].disc && !faces[face].under && <Bands side={side} span={span} />}
-            {rec ? <RecordLabel key={`${rec.id}-${face}`} rec={rec} face={faces[face]} /> : <span className="disc-label blank" />}
-            {rec && faces.length > 1 && (
+            {platter ? (
+              <RecordLabel key={`${platter.id}-${face}`} rec={platter} face={faces[face]} />
+            ) : (
+              <span className="disc-label blank" />
+            )}
+            {platter && faces.length > 1 && (
               <button
                 type="button"
                 className="label-hit"
@@ -427,28 +427,22 @@ export function Deck({
             )}
           </div>
           <span className="spindle" aria-hidden style={{ left: g.cx, top: g.cy }} />
-          {needleHere && side && rec && (
-            <Needle
-              x={g.cx}
-              y={g.cy}
+          {platter && (
+            <Tonearm
+              g={g}
               r={
-                radiusAt(
-                  needleHere.track,
-                  (needleHere.position + (needleHere.paused ? 0 : Date.now() - needleHere.at)) / 1000,
-                  side,
-                  span,
-                ) *
-                ((g.d * (rec.inches || 12)) / 24)
+                needleHere && side
+                  ? radiusAt(
+                      needleHere.track,
+                      (needleHere.position + (needleHere.paused ? 0 : Date.now() - needleHere.at)) / 1000,
+                      side,
+                      span,
+                    ) *
+                    ((g.d * (platter.inches || 12)) / 24)
+                  : null
               }
-              lifted={needleHere.paused}
-              title={side.tracks[needleHere.track]?.title}
-            />
-          )}
-          {wide && (
-            <span
-              className="arm"
-              aria-hidden
-              style={{ left: g.cx + g.d * 0.5, top: g.cy - g.d * 0.5, height: g.d * 0.8, transform: `rotate(${arm}deg)` }}
+              lifted={Boolean(needleHere?.paused)}
+              title={needleHere && side ? side.tracks[needleHere.track]?.title : undefined}
             />
           )}
 
@@ -696,18 +690,36 @@ function Bands({ side, span }: { side: Side; span: { outer: number; inner: numbe
   )
 }
 
-/** Where the needle is on the record. Tap it to lift it, and again to put it back. */
-function Needle({ x, y, r, lifted, title }: { x: number; y: number; r: number; lifted: boolean; title?: string }) {
-  // Up and to the right of the spindle, where the arm comes in.
-  const a = (-55 * Math.PI) / 180
+/**
+ * The tone arm. Its pivot sits just off the platter to the right; while a side plays
+ * it swings onto the record and creeps in with the music, and with nothing playing it
+ * rests at the side. Tap the headshell to lift it, and again to put it back down.
+ *   r: the radius it's playing at, in pixels from the spindle, or null at rest
+ */
+function Tonearm({ g, r, lifted, title }: { g: Geometry; r: number | null; lifted: boolean; title?: string }) {
+  const R = g.d / 2
+  const px = g.cx + R * 0.97
+  const py = g.cy - R * 0.55
+  const len = R * 0.95
+  const at = r != null ? reach(px, py, len, g.cx, g.cy, r) : null
+  // At rest it hangs straight down, clear of the record's edge.
+  const angle = at ? (Math.atan2(at.y - py, at.x - px) * 180) / Math.PI : 90
   return (
-    <button
-      type="button"
-      className={`needle ${lifted ? 'lifted' : ''}`}
-      style={{ left: x + r * Math.cos(a), top: y + r * Math.sin(a) }}
-      aria-label={lifted ? `Put the needle back down${title ? ` on ${title}` : ''}` : `Lift the needle${title ? `, playing ${title}` : ''}`}
-      onClick={lift}
-    />
+    <div
+      className={`tonearm ${at ? 'down' : ''} ${lifted ? 'lifted' : ''}`}
+      style={{ left: px, top: py, width: len, transform: `rotate(${angle}deg)` }}
+    >
+      <span className="tonearm-rod" aria-hidden />
+      <span className="tonearm-pivot" aria-hidden />
+      {at && (
+        <button
+          type="button"
+          className="tonearm-head"
+          aria-label={lifted ? `Put the needle back down${title ? ` on ${title}` : ''}` : `Lift the needle${title ? `, playing ${title}` : ''}`}
+          onClick={lift}
+        />
+      )}
+    </div>
   )
 }
 

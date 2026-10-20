@@ -58,3 +58,23 @@ export function radiusAt(track, offset, side, span) {
   const before = lens.slice(0, track).reduce((a, b) => a + b, 0)
   return span.outer - ((before + Math.min(offset, lens[track] ?? 0)) / total) * (span.outer - span.inner)
 }
+
+/**
+ * Where a tone arm of length len, pivoting at (px, py), puts its needle down on the
+ * groove of radius r round the spindle at (cx, cy): of the two places its swing
+ * crosses that groove, the higher one, which is the part of the record on show.
+ * -> { x, y }, or null if the arm can't reach.
+ */
+export function reach(px, py, len, cx, cy, r) {
+  const dx = cx - px
+  const dy = cy - py
+  const d = Math.hypot(dx, dy)
+  if (!d || d > len + r || d < Math.abs(len - r)) return null
+  const a = (len * len - r * r + d * d) / (2 * d)
+  const h = Math.sqrt(Math.max(0, len * len - a * a))
+  const mx = px + (a * dx) / d
+  const my = py + (a * dy) / d
+  const one = { x: mx + (h * dy) / d, y: my - (h * dx) / d }
+  const two = { x: mx - (h * dy) / d, y: my + (h * dx) / d }
+  return one.y < two.y ? one : two
+}
