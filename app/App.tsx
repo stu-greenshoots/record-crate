@@ -12,6 +12,8 @@ import { StatsView } from './components/StatsView'
 import { Toaster } from './components/Toast'
 import { CameraIcon, DiscIcon, ReturnIcon, StatsIcon, UnitIcon } from './components/Icons'
 import { warmUp } from './recognise'
+import { PlayerBar } from './components/PlayerBar'
+import { PreviewView } from './components/PreviewView'
 
 /** If a screen throws, offer a way back rather than a blank page. */
 class Boundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -100,8 +102,10 @@ function Screens() {
         {route.name === 'artist' && <ArtistView discogsId={route.id} />}
         {route.name === 'mb' && <ArtistView mbid={route.id} />}
         {route.name === 'stats' && <StatsView />}
+        {route.name === 'preview' && <PreviewView id={route.id} />}
       </main>
 
+      <PlayerBar />
       <nav className="tabbar" aria-label="Sections">
         <button type="button" className={tab === 'deck' ? 'on' : ''} onClick={() => go('', tab === 'deck')}>
           <DiscIcon />

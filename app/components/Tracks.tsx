@@ -6,7 +6,7 @@ import { toast } from './Toast'
 const time = (s: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '')
 
 /** The record's tracks, side by side. Tap one to play it from the top; the one playing is lit. */
-export function Tracks({ rec }: { rec: Rec }) {
+export function Tracks({ rec, route }: { rec: Rec; route?: string }) {
   const spotify = useSpotify()
   const [sides, setSides] = useState<Side[] | null>(null)
   useEffect(() => {
@@ -25,7 +25,7 @@ export function Tracks({ rec }: { rec: Rec }) {
   const play = (face: number, track: number) => {
     // Before anything is awaited: iOS only starts audio inside the touch.
     wake()
-    drop(rec, face, sides, () => ({ track, offset: 0 })).then((why) => why && toast(why))
+    drop(rec, face, sides, () => ({ track, offset: 0 }), route).then((why) => why && toast(why))
   }
 
   return (

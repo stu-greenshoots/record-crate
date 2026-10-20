@@ -23,6 +23,8 @@ export interface Rec {
   labelArt?: string | null
   /** Its sides in playing order, each with its label photo where one was found. */
   faces?: Face[]
+  /** The tracks, for a record that isn't in the snapshot (an album being previewed). */
+  sides?: Side[]
   /** The record's size where it isn't a 12", e.g. 7 for a single. */
   inches?: number
   /** The label photo is really the whole record (a coloured or picture disc, say). */

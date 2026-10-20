@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
  *   #/artist/10346 an artist's albums, yours and the rest (Discogs artist id)
  *   #/mb/<mbid>    the same for someone with no page of their own (a band member)
  *   #/stats
+ *   #/preview/<mbid>  an album you don't own on the turntable (MusicBrainz release group)
  */
 export type Route =
   | { name: 'find' }
@@ -28,6 +29,7 @@ export type Route =
   | { name: 'artist'; id: number }
   | { name: 'mb'; id: string }
   | { name: 'stats' }
+  | { name: 'preview'; id: string }
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/')
@@ -50,6 +52,8 @@ export function parse(hash: string): Route {
       return { name: 'mb', id: decodeURIComponent(parts[1] || '') }
     case 'stats':
       return { name: 'stats' }
+    case 'preview':
+      return { name: 'preview', id: decodeURIComponent(parts[1] || '') }
     default:
       return { name: 'find' }
   }

@@ -26,10 +26,16 @@ interface Token {
 /** What's playing: which record and side, and where Spotify last said it was. */
 export interface NowPlaying {
   recId: number
+  rec: Rec
+  sides: Side[]
+  /** Where the record lives in the app, for getting back to it from the player bar. */
+  route: string
   face: number
   /** The side's track index (Discogs order), or -1 if Spotify moved on to something else. */
   track: number
   position: number
+  /** The track's length, once Spotify has said, in ms. */
+  duration: number
   paused: boolean
   /** When position was true, for working out where the needle is now. */
   at: number
@@ -166,8 +172,9 @@ declare global {
 
 let player: any = null
 let deviceId: string | null = null
-// Which Spotify track is which, for the side that's playing.
-let playingUris: (string | null)[] = []
+// Which Spotify track is which side and track of the record, from the one dropped on
+// to the end of the album: it plays on through the sides, as a record changer would.
+let queue: { uri: string; face: number; track: number }[] = []
 
 function startPlayer() {
   if (player || !read<Token>(KEY)) return
@@ -187,8 +194,19 @@ function startPlayer() {
       if (!s || !state.now) return
       const t = s.track_window?.current_track
       // Spotify may play a different copy of a track in your country, saying which it was.
-      const track = playingUris.indexOf(t?.linked_from?.uri || t?.uri)
-      set({ now: { ...state.now, track: track >= 0 ? track : playingUris.indexOf(t?.uri), position: s.position, paused: s.paused, at: Date.now() } })
+      const at = queue.find((q) => q.uri === t?.linked_from?.uri) || queue.find((q) => q.uri === t?.uri)
+      set({
+        now: {
+          ...state.now,
+          face: at ? at.face : state.now.face,
+          track: at ? at.track : -1,
+          position: s.position,
+          duration: s.duration || 0,
+          paused: s.paused,
+          at: Date.now(),
+        },
+      })
+      showOnLockScreen()
     })
     player.connect()
   }
@@ -209,6 +227,7 @@ finishSignIn()
 
 /** The record's sides and tracks: from the snapshot's pressing notes, or Discogs for a new one. */
 export async function sidesOf(rec: Rec): Promise<Side[]> {
+  if (rec.sides) return rec.sides
   const p = await loadPressing(rec.releaseId)
   if (p?.sides?.length) return p.sides
   const res = await fetch(`https://api.discogs.com/releases/${rec.releaseId}`).catch(() => null)
@@ -270,6 +289,28 @@ export function wake() {
   player?.activateElement?.()
 }
 
+/** The cover, as the app has it: cached with the snapshot, or Discogs' or the archive's. */
+export function coverOf(rec: Rec) {
+  return rec.cover ? new URL(`${import.meta.env.BASE_URL}${rec.cover}`, location.origin).href : rec.remoteCover || ''
+}
+
+/** The phone's lock screen and headphone buttons, as for any music player. */
+function showOnLockScreen() {
+  const now = state.now
+  if (!('mediaSession' in navigator) || !now) return
+  const title = now.sides[now.face]?.tracks[now.track]?.title || now.rec.title
+  const cover = coverOf(now.rec)
+  const ms = navigator.mediaSession
+  if (ms.metadata?.title !== title) {
+    ms.metadata = new MediaMetadata({ title, artist: now.rec.artist, album: now.rec.title, artwork: cover ? [{ src: cover }] : [] })
+  }
+  ms.playbackState = now.paused ? 'paused' : 'playing'
+  ms.setActionHandler('play', () => toggle())
+  ms.setActionHandler('pause', () => toggle())
+  ms.setActionHandler('nexttrack', () => next())
+  ms.setActionHandler('previoustrack', () => previous())
+}
+
 /**
  * Play a side from where the needle went down. Where that is depends on the track
  * lengths, which may only be known once the album is found, so `at` is asked then.
@@ -280,6 +321,7 @@ export async function drop(
   face: number,
   sides: Side[],
   at: (side: Side) => { track: number; offset: number } | null,
+  route = `r/${rec.id}`,
 ): Promise<string | null> {
   if (!state.connected) return 'Connect Spotify in Settings to play your records'
   if (!state.ready || !deviceId) return 'Spotify is still starting up'
@@ -289,16 +331,23 @@ export async function drop(
   if (!where) return null
   const { track, offset: seconds } = where
   const start = sides.slice(0, face).reduce((n, s) => n + s.tracks.length, 0)
-  const uris = album.uris.slice(start, start + sides[face].tracks.length)
-  if (!uris[track]) return "That track isn't on Spotify's version"
-  playingUris = uris
-  // Only the tracks Spotify has, from the one touched; the side ends where the record would.
-  const queue = uris.filter((u, i): u is string => Boolean(u) && i >= track)
-  set({ now: { recId: rec.id, face, track, position: seconds * 1000, paused: false, at: Date.now() } })
+  if (!album.uris[start + track]) return "That track isn't on Spotify's version"
+  // Every track Spotify has, from the one touched to the end of the last side.
+  queue = []
+  sides.forEach((s, f) => {
+    const first = sides.slice(0, f).reduce((n, x) => n + x.tracks.length, 0)
+    s.tracks.forEach((_, t) => {
+      const uri = album.uris[first + t]
+      if (uri && (f > face || (f === face && t >= track))) queue.push({ uri, face: f, track: t })
+    })
+  })
+  set({
+    now: { recId: rec.id, rec, sides, route, face, track, position: seconds * 1000, duration: 0, paused: false, at: Date.now() },
+  })
   try {
     await api(`me/player/play?device_id=${deviceId}`, {
       method: 'PUT',
-      body: JSON.stringify({ uris: queue, position_ms: Math.round(seconds * 1000) }),
+      body: JSON.stringify({ uris: queue.map((q) => q.uri), position_ms: Math.round(seconds * 1000) }),
     })
     return null
   } catch {
@@ -308,10 +357,21 @@ export async function drop(
 }
 
 /** Lift the needle, or put it back down where it was. */
-export function lift() {
+export function toggle() {
   if (!player || !state.now) return
+  wake()
   if (state.now.paused) player.resume()
   else player.pause()
+}
+export const lift = toggle
+
+export function next() {
+  player?.nextTrack()
+}
+
+/** Back to the start of this track, or the one before if it's only just begun. */
+export function previous() {
+  player?.previousTrack()
 }
 
 /** Take the needle off altogether: another record, or the other side. */

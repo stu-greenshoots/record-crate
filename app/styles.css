@@ -40,6 +40,8 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --radius: 14px;
   --tabbar-h: 64px;
+  /* The player bar's height while something's playing (html.playing). */
+  --player-h: 0px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
@@ -119,7 +121,7 @@ img {
 .page {
   max-width: 600px;
   margin: 0 auto;
-  padding: calc(var(--safe-t) + 14px) 16px calc(var(--tabbar-h) + var(--safe-b) + 32px);
+  padding: calc(var(--safe-t) + 14px) 16px calc(var(--tabbar-h) + var(--player-h) + var(--safe-b) + 32px);
 }
 
 /* Room to scroll a field near the bottom of the page up above the keyboard. */
@@ -1636,7 +1638,7 @@ body.typing .page {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tabbar-h) + var(--safe-b) + 14px);
+  bottom: calc(var(--tabbar-h) + var(--player-h) + var(--safe-b) + 14px);
   z-index: 50;
   display: flex;
   align-items: center;
@@ -1769,7 +1771,7 @@ body.typing .page {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - var(--tabbar-h) - var(--safe-b));
+  height: calc(100dvh - var(--tabbar-h) - var(--player-h) - var(--safe-b));
   min-height: 520px;
   overflow: hidden;
 }
@@ -2206,7 +2208,7 @@ body.typing .page {
 .deck-details {
   max-width: 600px;
   margin: 0 auto;
-  padding: 0 20px calc(var(--tabbar-h) + var(--safe-b) + 32px);
+  padding: 0 20px calc(var(--tabbar-h) + var(--player-h) + var(--safe-b) + 32px);
 }
 
 /* Landscape tablet: platter left, the record's column right. */
@@ -2214,7 +2216,7 @@ body.typing .page {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
-  height: calc(100dvh - var(--tabbar-h) - var(--safe-b));
+  height: calc(100dvh - var(--tabbar-h) - var(--player-h) - var(--safe-b));
   overflow: hidden;
 }
 
@@ -3174,4 +3176,117 @@ button.stat-row:active {
   overflow: hidden;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+}
+
+/* The player bar: what's playing, above the tabs on every page. */
+html.playing {
+  --player-h: 58px;
+}
+
+.player-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + var(--safe-b));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--player-h);
+  padding: 0 8px 0 10px;
+  overflow: hidden;
+  background: rgba(29, 26, 25, 0.96);
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(12px);
+}
+
+.player-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--amber);
+  transition: width 1s linear;
+}
+
+.player-what {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-sleeve {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+}
+
+.player-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.player-track,
+.player-album {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.player-track {
+  color: var(--text-hi);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.player-album {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.player-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.player-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.player-btn.main {
+  width: 44px;
+  height: 44px;
+  background: var(--amber);
+  color: #1d1a19;
+}
+
+.player-btn:focus-visible,
+.player-what:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.preview .where-words a {
+  color: var(--amber-2);
 }

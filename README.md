@@ -127,7 +127,14 @@ it plays that side from there (`shared/needle.js` turns the touch into a track a
 time, from the track lengths), and the needle rides the record; tap it to lift it.
 `app/spotify.ts` signs in with PKCE (no secret, no server), runs Spotify's Web
 Playback SDK, and finds the album by lining its tracks up with Discogs'
-(`shared/spotify.js`); an album that doesn't line up isn't played.
+(`shared/spotify.js`); an album that doesn't line up isn't played. It plays on to
+the end of the last side, turning the record over as it goes, and a bar above the
+tabs (and the phone's lock screen) has play, pause and skip while you look round.
+
+On an artist's page, an album you don't have opens on a preview turntable
+(`#/preview/<MusicBrainz id>`): its tracks from MusicBrainz (cut onto sides if it
+never came out on vinyl), its cover from the Cover Art Archive, and a link to find a
+copy on Discogs.
 
 `fetch-details.mjs` only fetches what's missing: each album's vinyl versions (for the
 pressing verdicts, `shared/pressing.js`), price suggestions, and each artist's

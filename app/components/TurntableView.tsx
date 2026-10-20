@@ -174,7 +174,20 @@ function geometry(w: number, h: number, wide: boolean): Geometry {
   return { d, cx: w / 2, cy, s0, s: s0 * 0.6, r0, r: r0 - 8, base: -90, step: 23 }
 }
 
-function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; order: number[]; wide: boolean }) {
+export function Deck({
+  store,
+  rec,
+  order,
+  wide,
+  route,
+}: {
+  store: Derived
+  rec: Rec | null
+  order: number[]
+  wide: boolean
+  /** Where this record lives in the app, if not on the shelf (an album being previewed). */
+  route?: string
+}) {
   const stage = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
   const [drag, setDrag] = useState(0)
@@ -234,11 +247,6 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
     if (now && now.recId === id && now.face !== face) setUp({ id, i: now.face })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now?.recId, now?.face])
-  // Another record on the platter takes the needle off the last one.
-  useEffect(() => {
-    if (now && now.recId !== id) stop()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
 
   const onGroove = (e: React.MouseEvent) => {
     if (!rec || (e.target as HTMLElement).closest('.label-hit')) return
@@ -248,7 +256,7 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
     if (!side || r < span.inner) return
     // Before anything is awaited: iOS only starts audio inside the touch.
     wake()
-    dropNeedle(rec, face, sides!.sides, (s) => timeAt(r, s, span)).then((why) => why && toast(why))
+    dropNeedle(rec, face, sides!.sides, (s) => timeAt(r, s, span), route).then((why) => why && toast(why))
   }
 
   const turnOver = () => {
@@ -439,7 +447,7 @@ function Deck({ store, rec, order, wide }: { store: Derived; rec: Rec | null; or
           )}
 
           {shown.map(({ rid, k, off }) => {
-            const r = store.byId.get(rid)
+            const r = rid === rec?.id ? rec : store.byId.get(rid)
             if (!r) return null
             const near = Math.max(0, 1 - Math.abs(off))
             const radius = g.r + (g.r0 - g.r) * near
@@ -702,7 +710,7 @@ function Needle({ x, y, r, lifted, title }: { x: number; y: number; r: number; l
  * fit, and only the longest wrap onto two smaller lines. The heading then never
  * changes height, so the record below it never changes size.
  */
-function FitTitle({ text }: { text: string }) {
+export function FitTitle({ text }: { text: string }) {
   const el = useRef<HTMLHeadingElement>(null)
   useLayoutEffect(() => {
     const h = el.current

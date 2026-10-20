@@ -117,3 +117,30 @@ export const StatsIcon = () => (
     <path d="M5 20V11M10 20V5M15 20v-7M20 20V9" />
   </svg>
 )
+
+export const PlayIcon = () => (
+  <svg {...base} fill="currentColor" stroke="none">
+    <path d="M8 5.5v13a.8.8 0 0 0 1.2.7l10.4-6.5a.8.8 0 0 0 0-1.4L9.2 4.8A.8.8 0 0 0 8 5.5z" />
+  </svg>
+)
+
+export const PauseIcon = () => (
+  <svg {...base} fill="currentColor" stroke="none">
+    <rect x="6.5" y="5" width="4" height="14" rx="1" />
+    <rect x="13.5" y="5" width="4" height="14" rx="1" />
+  </svg>
+)
+
+export const NextIcon = () => (
+  <svg {...base} fill="currentColor" stroke="none">
+    <path d="M5 6.2v11.6a.7.7 0 0 0 1.1.6l8.6-5.8a.7.7 0 0 0 0-1.2L6.1 5.6A.7.7 0 0 0 5 6.2z" />
+    <rect x="16.5" y="5.5" width="2.5" height="13" rx="1" />
+  </svg>
+)
+
+export const PrevIcon = () => (
+  <svg {...base} fill="currentColor" stroke="none">
+    <path d="M19 6.2v11.6a.7.7 0 0 1-1.1.6l-8.6-5.8a.7.7 0 0 1 0-1.2l8.6-5.8A.7.7 0 0 1 19 6.2z" />
+    <rect x="5" y="5.5" width="2.5" height="13" rx="1" />
+  </svg>
+)

@@ -194,19 +194,16 @@ function AlbumRow({ album, store }: { album: Album; store: NonNullable<ReturnTyp
       </li>
     )
   }
-  const href = album.masters[0]
-    ? `https://www.discogs.com/master/${album.masters[0]}`
-    : `https://musicbrainz.org/release-group/${album.id}`
   return (
     <li>
-      <a className="result missing" href={href} target="_blank" rel="noreferrer">
+      <button type="button" className="result missing" onClick={() => go(`preview/${album.id}`)}>
         <MissingSleeve id={album.id} />
         <span className="result-text">
           <span className="result-title">{album.title}</span>
           <span className="result-artist">{album.year || ''}</span>
         </span>
         <span className="missing-chip">Missing</span>
-      </a>
+      </button>
     </li>
   )
 }

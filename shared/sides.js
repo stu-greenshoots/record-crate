@@ -42,3 +42,29 @@ export function sides(tracklist = [], discs = 1) {
   }
   return out
 }
+
+// About as much as goes on one side of an LP.
+const SIDE = 22 * 60
+
+/**
+ * An album with no sides of its own (a CD or download track list) cut onto sides, as
+ * a record of it would be: two sides a record, about twenty minutes each, each track
+ * on the side its middle falls in.
+ *   tracks: [{ title, seconds }] -> [{ side, tracks: [{ position, title, seconds }] }]
+ */
+export function cut(tracks) {
+  const lens = tracks.map((t) => (t.seconds > 0 ? t.seconds : null))
+  const known = lens.filter(Boolean)
+  const fill = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 1
+  const len = lens.map((l) => l ?? fill)
+  const total = len.reduce((a, b) => a + b, 0)
+  const count = known.length ? Math.max(2, Math.ceil(total / SIDE / 2) * 2) : 2
+  const out = Array.from({ length: count }, (_, i) => ({ side: String.fromCharCode(65 + i), tracks: [] }))
+  let done = 0
+  tracks.forEach((t, i) => {
+    const s = Math.min(count - 1, Math.floor(((done + len[i] / 2) / total) * count))
+    out[s].tracks.push({ position: `${out[s].side}${out[s].tracks.length + 1}`, title: t.title, seconds: lens[i] })
+    done += len[i]
+  })
+  return out.filter((s, i) => s.tracks.length || i < 2)
+}
