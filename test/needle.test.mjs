@@ -1,4 +1,4 @@
-import { grooves, radiusAt, reach, timeAt, lengths, withLengths } from '../shared/needle.js'
+import { armAngle, grooves, radiusAt, reach, timeAt, lengths, withLengths } from '../shared/needle.js'
 
 let pass = 0
 let fail = 0
@@ -54,6 +54,12 @@ ok(reach(P[0], P[1], L, 0, 0, 5) === null, "a groove the arm can't reach: none")
 const outer = reach(P[0], P[1], L, 0, 0, 96)
 const inner = reach(P[0], P[1], L, 0, 0, 41)
 ok(Math.atan2(inner.y - P[1], inner.x - P[0]) !== Math.atan2(outer.y - P[1], outer.x - P[0]), 'the arm swings in as the side plays')
+
+// Pivot to the right of the spindle: the arm points left, crossing 180 as it swings in.
+const above = armAngle(100, 0, { x: 0, y: -5 })
+const below = armAngle(100, 0, { x: 0, y: 5 })
+ok(Math.abs(above - below) < 10, "the arm's angle doesn't wrap as it swings past pointing left", `${above} ${below}`)
+ok(Math.abs(above - 90) < 180 && Math.abs(below - 90) < 180, 'from resting straight down (90) it swings the short way onto the record')
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
 process.exit(fail ? 1 : 0)

@@ -5,7 +5,7 @@ import { go } from '../route'
 import { warmUp } from '../recognise'
 import { alongWords, cubePlace, fractionAlong, yearOf } from '../where'
 import type { BuiltMap, Face, Rec, Side } from '../types'
-import { grooves, radiusAt, reach, timeAt } from '../../shared/needle.js'
+import { armAngle, grooves, radiusAt, reach, timeAt } from '../../shared/needle.js'
 import { drop as dropNeedle, filled, lift, sidesOf, stop, useSpotify, wake } from '../spotify'
 import { Sleeve } from './Sleeve'
 import { RecordLabel } from './Label'
@@ -703,7 +703,7 @@ function Tonearm({ g, r, lifted, title }: { g: Geometry; r: number | null; lifte
   const len = R * 0.95
   const at = r != null ? reach(px, py, len, g.cx, g.cy, r) : null
   // At rest it hangs straight down, clear of the record's edge.
-  const angle = at ? (Math.atan2(at.y - py, at.x - px) * 180) / Math.PI : 90
+  const angle = at ? armAngle(px, py, at) : 90
   return (
     <div
       className={`tonearm ${at ? 'down' : ''} ${lifted ? 'lifted' : ''}`}

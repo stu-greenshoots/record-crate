@@ -78,3 +78,13 @@ export function reach(px, py, len, cx, cy, r) {
   const two = { x: mx - (h * dy) / d, y: my + (h * dx) / d }
   return one.y < two.y ? one : two
 }
+
+/**
+ * The arm's angle in degrees, from its pivot to the needle, kept between 0 and 360.
+ * It never points right, so it never wraps: atan2's jump from 180 to -180 as the arm
+ * swings past pointing left would make a CSS transition spin it the long way round.
+ */
+export function armAngle(px, py, at) {
+  const a = (Math.atan2(at.y - py, at.x - px) * 180) / Math.PI
+  return a < 0 ? a + 360 : a
+}
