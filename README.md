@@ -113,14 +113,21 @@ On a coloured, clear or picture disc there are no dark grooves to find the label
 inside, so the "label" it crops can be the whole record. `identify/discs.py` tells
 those apart (a probe on each crop's embedding, trained on
 `identify/tests/disc-truth.json`), re-crops them round their label so they spin
-true (`public/discs/`), and the turntable draws them across the whole platter. A 7"
-or 10" is drawn to scale on the 12" platter.
+true (`public/discs/`), and the turntable draws them across the whole platter.
+Measure with `.venv/bin/python -m identify.discs`; it fails if any label would be
+shown as a disc. A 7" or 10" is drawn to scale on the 12" platter.
 
 Every side's label is cropped too (`<id>-2.webp` for the next side, in Discogs' photo
 order, which puts side A first), and `shared/sides.js` reads the sides from the track
 list. Tap the label on the turntable to turn the record over; on a set, B goes on to
-the next record's C. Measure with `.venv/bin/python -m identify.discs`; it fails if any label
-would be shown as a disc.
+the next record's C.
+
+Connect Spotify (Premium) in Settings and the turntable plays: touch the grooves and
+it plays that side from there (`shared/needle.js` turns the touch into a track and a
+time, from the track lengths), and the needle rides the record; tap it to lift it.
+`app/spotify.ts` signs in with PKCE (no secret, no server), runs Spotify's Web
+Playback SDK, and finds the album by lining its tracks up with Discogs'
+(`shared/spotify.js`); an album that doesn't line up isn't played.
 
 `fetch-details.mjs` only fetches what's missing: each album's vinyl versions (for the
 pressing verdicts, `shared/pressing.js`), price suggestions, and each artist's
