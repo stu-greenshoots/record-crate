@@ -3122,3 +3122,56 @@ button.stat-row:active {
     animation: none;
   }
 }
+
+/*
+ * On the phone the turntable gets the height the heading leaves it, so a heading
+ * that grew with a long title made some records smaller than others. Every part of
+ * it has a fixed size instead: the record stays the same size and in the same place
+ * as you swipe along the shelf.
+ */
+.eyebrow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.deck.tall .eyebrow-row .eyebrow {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.deck.tall .eyebrow-row .press-badge {
+  flex: none;
+  margin-top: 0;
+  padding: 1px 8px;
+  font-size: 10px;
+}
+
+.about-title.fit {
+  display: block;
+  height: 40px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The longest titles: two lines in the same height. */
+.about-title.fit.two {
+  display: -webkit-box;
+  font-size: 19px;
+  line-height: 20px;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.deck.tall .where-words {
+  display: -webkit-box;
+  min-height: 3lh;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}

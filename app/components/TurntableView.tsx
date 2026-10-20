@@ -514,18 +514,21 @@ function About({ store, rec, wide, onRandom }: { store: Derived; rec: Rec; wide:
 
   return (
     <div className="about">
-      <p className="eyebrow">
-        {rec.artistId ? (
-          <button type="button" className="artist-link" onClick={() => go(`artist/${rec.artistId}`)}>
-            {rec.artist}
-          </button>
-        ) : (
-          rec.artist
-        )}
-        {!wide && yearOf(rec) ? ` · ${yearOf(rec)}` : ''}
-      </p>
-      <h1 className="about-title">{rec.title}</h1>
-      {pressBadge(rec) && <p className="press-badge">{pressBadge(rec)}</p>}
+      <div className="eyebrow-row">
+        <p className="eyebrow">
+          {rec.artistId ? (
+            <button type="button" className="artist-link" onClick={() => go(`artist/${rec.artistId}`)}>
+              {rec.artist}
+            </button>
+          ) : (
+            rec.artist
+          )}
+          {!wide && yearOf(rec) ? ` · ${yearOf(rec)}` : ''}
+        </p>
+        {!wide && pressBadge(rec) && <p className="press-badge">{pressBadge(rec)}</p>}
+      </div>
+      {wide ? <h1 className="about-title">{rec.title}</h1> : <FitTitle text={rec.title} />}
+      {wide && pressBadge(rec) && <p className="press-badge">{pressBadge(rec)}</p>}
       <RandomBar store={store} rec={rec} onChange={onRandom} />
       {wide && <p className="about-meta">{[yearOf(rec), rec.format, rec.catno].filter(Boolean).join(' · ')}</p>}
 
@@ -691,5 +694,36 @@ function Needle({ x, y, r, lifted, title }: { x: number; y: number; r: number; l
       aria-label={lifted ? `Put the needle back down${title ? ` on ${title}` : ''}` : `Lift the needle${title ? `, playing ${title}` : ''}`}
       onClick={lift}
     />
+  )
+}
+
+/**
+ * The title on the phone, in a box of fixed height: long titles get smaller until they
+ * fit, and only the longest wrap onto two smaller lines. The heading then never
+ * changes height, so the record below it never changes size.
+ */
+function FitTitle({ text }: { text: string }) {
+  const el = useRef<HTMLHeadingElement>(null)
+  useLayoutEffect(() => {
+    const h = el.current
+    if (!h) return
+    const fit = () => {
+      h.classList.remove('two')
+      for (let size = 30; size >= 22; size -= 1) {
+        h.style.fontSize = `${size}px`
+        if (h.scrollWidth <= h.clientWidth) return
+      }
+      h.classList.add('two')
+      h.style.fontSize = ''
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(h)
+    return () => ro.disconnect()
+  }, [text])
+  return (
+    <h1 ref={el} className="about-title fit">
+      {text}
+    </h1>
   )
 }
