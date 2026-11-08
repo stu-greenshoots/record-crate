@@ -90,8 +90,8 @@ for every pressing. So recognising the album from its cover is enough.
 ## Refreshing the snapshot
 
 The app's data comes from the local Discogs mirror in `data/` (gitignored —
-collection, artists, master years and cached covers, pulled by the original
-desktop app in `server/` + `src/`).
+collection, artists, master years and cached covers, pulled from Discogs by
+`npm run sync` through the code in `server/`).
 
 ```bash
 npm run sync       # Discogs -> data/ (collection, artists, master years, covers)
@@ -147,8 +147,8 @@ The export also lists who's on each record, from the Discogs credits cached in
 `data/releases/` (`shared/credits.js` decides which roles count). Releases without
 cached credits are counted in the export log.
 
-`sync` needs the Discogs login in `data/auth.json` (made by connecting once through
-`npm run server`). Between snapshots, the app's own Discogs check files new purchases
+`sync` needs the Discogs login in `data/auth.json` (made by running `npm run server`
+and connecting once at http://localhost:5177). Between snapshots, the app's own Discogs check files new purchases
 on the phone using the same rules (the public collection API needs no login). The
 camera learns their sleeves at the next snapshot.
 
@@ -174,7 +174,7 @@ shared/       filing rules, shelf width/height, the unit layout solver, credits
 scripts/      export.mjs (snapshot), embed.mjs (recognition index), copy-ort.mjs,
               fetch-label-photos.py + embed-label-photos.mjs (label sources)
 public/       the snapshot, covers, labels, model and service worker
-server/, src/ the original desktop app and Discogs sync (see HANDOVER.md)
+server/       Discogs sign-in and sync, and photo-reading routes (see HANDOVER.md)
 identify/     recognition experiments and measurements; labels.py (centre labels)
 ```
 
