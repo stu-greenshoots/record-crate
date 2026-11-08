@@ -1,7 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
-import { getStore, load } from './store'
+import { getStore, load, synthetic } from './store'
 import { warmUp } from './recognise'
 import { refresh } from './discogs'
 // Self-hosted, so the type is there offline in front of the shelf.
@@ -19,7 +19,7 @@ import './spotify'
 const CHECK_EVERY_MS = 6 * 3600 * 1000
 load().then(() => {
   const last = getStore()?.local.lastCheck
-  if (navigator.onLine && (!last || Date.now() - Date.parse(last) > CHECK_EVERY_MS)) {
+  if (!synthetic && navigator.onLine && (!last || Date.now() - Date.parse(last) > CHECK_EVERY_MS)) {
     setTimeout(() => refresh({ quiet: true }), 3000)
   }
 })
