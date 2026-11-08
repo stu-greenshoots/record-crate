@@ -42,7 +42,7 @@ export const AdminOverview = z.object({
       username: z.string(),
       collectionSize: z.number().int(),
       lastSeenAt: z.string().nullable(),
-      discogs: z.enum(['ok', 'expired', 'revoked']),
+      discogs: z.enum(['pending', 'ok', 'expired', 'revoked']),
       spotify: z.enum(['ok', 'expired', 'none']),
       /** Discogs requests left in this user's current minute. */
       discogsBudget: z.number().int(),

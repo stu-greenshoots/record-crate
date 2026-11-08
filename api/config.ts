@@ -13,6 +13,7 @@ const Env = z
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     DATABASE_URL: z.string().url().optional(),
     REDIS_URL: z.string().url().optional(),
+    MIGRATE_ON_START: z.enum(['true', 'false']).default('true'),
   })
   .transform((env, ctx) => {
     const production = env.NODE_ENV === 'production'
@@ -28,6 +29,8 @@ const Env = z
       redisUrl: env.REDIS_URL ?? LOCAL.REDIS_URL,
       /** Check every response against the contract; off in production, where it would cost every request. */
       checkResponses: !production,
+      /** One server on one box: bringing the schema up to date on start is the simplest safe deploy. */
+      migrateOnStart: env.MIGRATE_ON_START === 'true',
     }
   })
 
