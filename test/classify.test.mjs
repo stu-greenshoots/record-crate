@@ -78,3 +78,5 @@ console.log('\n— Collation ignores punctuation and accents —')
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`)
+
+process.exit(fail ? 1 : 0)
