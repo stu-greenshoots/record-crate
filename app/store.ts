@@ -36,7 +36,13 @@ export interface Local {
   lastCheck: string | null
 }
 
-const KEY = 'record-crate:v1'
+/**
+ * In development, ?collection=5000 loads the made-up data/collection-5000.json
+ * (scripts/synth-collection.mjs) and keeps what's done to it under its own key.
+ */
+export const synthetic = import.meta.env.DEV ? new URLSearchParams(location.search).get('collection')?.match(/^\d+$/)?.[0] ?? null : null
+
+const KEY = synthetic ? `record-crate:synthetic-${synthetic}` : 'record-crate:v1'
 
 const EMPTY = EMPTY_LOCAL as Local
 
@@ -145,7 +151,7 @@ export async function load() {
   try {
     // GitHub Pages lets the browser reuse a copy for ten minutes; ask it to check, so
     // the first open after a deploy gets the new snapshot.
-    const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`, { cache: 'no-cache' })
+    const res = await fetch(`${import.meta.env.BASE_URL}data/collection${synthetic ? `-${synthetic}` : ''}.json`, { cache: 'no-cache' })
     if (!res.ok) throw new Error(`Couldn't load the collection (${res.status})`)
     snapshot = await res.json()
     loadError = null

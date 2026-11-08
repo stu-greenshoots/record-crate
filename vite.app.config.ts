@@ -23,6 +23,21 @@ export default defineConfig({
       },
     },
     {
+      // Made-up collections (scripts/synth-collection.mjs) live outside public/, so a
+      // build never ships them; the dev server alone serves them as data/collection-<n>.json.
+      name: 'serve-synthetic-collections',
+      apply: 'serve',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          const n = req.url?.match(/\/data\/collection-(\d+)\.json(\?|$)/)?.[1]
+          const file = n && path.resolve(`synthetic/collection-${n}.json`)
+          if (!file || !fs.existsSync(file)) return next()
+          res.setHeader('Content-Type', 'application/json')
+          fs.createReadStream(file).pipe(res)
+        })
+      },
+    },
+    {
       // Stamp the service worker: its shell cache follows the build, its model cache
       // follows the ONNX runtime and model versions.
       name: 'stamp-service-worker',
