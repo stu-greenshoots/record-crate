@@ -2,8 +2,9 @@
  * Offline support. The app should open instantly in front of the shelf, signal or
  * not, so everything it needs is cached:
  *
- *   - the page and its built assets: precached at install, so even the second
- *     launch works offline; the page itself is network-first with a short timeout
+ *   - the page and every file the build made: precached at install, so even the
+ *     second launch works offline; the page itself is network-first with a short
+ *     timeout
  *   - the collection: network-first with the same short timeout, so a new snapshot
  *     shows up the first time the app opens after a deploy
  *   - the recognition index: served from cache, refreshed behind
@@ -12,10 +13,18 @@
  *   - the model and the ONNX runtime: cache-first, in a cache named after their
  *     versions, so an upgrade fetches them again and nothing else does
  *
- * __BUILD__ and __RUNTIME__ are filled in by the build (vite.app.config.ts).
+ * A new version installs beside the old one and waits. A deploy replaces every
+ * hashed file on the server, so an app that's already open stays with the old
+ * worker, whose cache holds every file of its build (the recogniser's worker and
+ * the fonts load long after the page does), until it's closed or you tap Reload
+ * (app/update.ts).
+ *
+ * __BUILD__, __RUNTIME__ and __ASSETS__ are filled in by the build
+ * (vite.app.config.ts).
  */
 const BUILD = '__BUILD__'
 const RUNTIME = '__RUNTIME__'
+const ASSETS = /*__ASSETS__*/ []
 const SHELL = `crate-shell-${BUILD}`
 const MODEL = `crate-model-${RUNTIME}`
 const COVERS = 'crate-covers'
@@ -25,22 +34,24 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(SHELL)
-      const res = await fetch('./', { cache: 'no-cache' })
-      const html = await res.clone().text()
-      await cache.put('./', res)
-      const assets = [...new Set(html.match(/assets\/[^"')\s]+/g) || [])]
+      const page = await fetch('./', { cache: 'no-cache' })
+      if (!page.ok) throw new Error(`The page answered ${page.status}`)
+      await cache.put('./', page)
       await cache.add(new Request('data/collection.json', { cache: 'no-cache' }))
       await cache.addAll([
-        ...assets,
+        ...ASSETS,
         'data/embeddings.json',
         'manifest.webmanifest',
         'icon.svg',
         'icon-180.png',
         'icon-192.png',
       ])
-      await self.skipWaiting()
     })(),
   )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'skip-waiting') event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', (event) => {
@@ -62,8 +73,10 @@ async function networkFirst(request) {
   })
   // On a weak signal, don't keep a record in your hand waiting: fall back to the
   // cached page after a moment and let the network fill the cache for next time.
+  // An error from the server (a 404 mid-deploy, a 5xx) is no better than no
+  // signal: the cached copy wins.
   const timeout = new Promise((resolve) => setTimeout(resolve, 2500))
-  const first = await Promise.race([network.catch(() => null), timeout])
+  const first = await Promise.race([network.then((res) => (res.ok ? res : null), () => null), timeout])
   if (first) return first
   const cached = (await cache.match(request)) || (request.mode === 'navigate' ? await cache.match('./') : null)
   return cached || network.catch(() => Response.error())
