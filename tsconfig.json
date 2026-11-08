@@ -21,6 +21,7 @@
     "app",
     "shared",
     "contract",
+    "api",
     "test/**/*.ts",
     "vitest.config.ts"
   ]
