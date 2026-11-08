@@ -9,6 +9,7 @@ data/
 identify/**/__pycache__/
 __pycache__/
 dist-app/
+dist-api/
 app/__test/
 public/ort/
 public/pressings/
