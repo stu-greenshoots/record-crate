@@ -12,7 +12,8 @@
     "snapshot": "npm run labels && node scripts/export.mjs && node scripts/embed.mjs",
     "server": "node server/index.js",
     "start": "NODE_ENV=production node server/index.js",
-    "test": "node test/classify.test.mjs && node test/shelfmap.test.mjs && node test/identify.test.mjs && node test/backup.test.mjs && node test/credits.test.mjs && node test/filter.test.mjs && node test/pressing.test.mjs && node test/pressing-match.test.mjs && node test/discography.test.mjs && node test/sides.test.mjs && node test/needle.test.mjs && node test/spotify.test.mjs",
+    "test": "node --test test/*.test.mjs && vitest run",
+    "test:watch": "vitest",
     "deploy": "sh scripts/deploy.sh",
     "labels": ".venv/bin/python scripts/fetch-label-photos.py && node scripts/embed-label-photos.mjs && .venv/bin/python -m identify.labels --build && .venv/bin/python -m identify.discs --prepare && node scripts/embed-label-photos.mjs --crops && .venv/bin/python -m identify.discs --build"
   },
@@ -26,9 +27,11 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "jsdom": "^25.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "^5.5.4",
-    "vite": "^5.4.2"
+    "vite": "^5.4.2",
+    "vitest": "^2.1.9"
   }
 }

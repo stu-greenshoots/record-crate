@@ -18,8 +18,9 @@
     "allowJs": true
   },
   "include": [
-     
     "app",
-    "shared"
+    "shared",
+    "test/**/*.ts",
+    "vitest.config.ts"
   ]
 }

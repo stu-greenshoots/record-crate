@@ -32,7 +32,7 @@ prior context. The app is built and working; the open problem is at the bottom.
 
 ```bash
 npm run dev        # http://localhost:5177 — no passcode locally
-npm test           # filing rules, shelf layout, catalogue-number matching
+npm test           # node --test runs test/*.test.mjs (filing, layout, catnos); vitest runs test/*.test.ts (the phone store)
 ```
 
 Stu (Discogs user `sachaigh`) is already authenticated — `data/auth.json` holds a
@@ -292,7 +292,7 @@ identify/
   text.py       finding the sleeve in the frame, plus the older front-sleeve OCR
   cli.py        JSON bridge for the Node server
 src/            React + TypeScript front end
-test/           npm test — filing rules and shelf layout
+test/           npm test — .mjs files run under node --test, .ts files under vitest
 data/           his collection, shelves, cached art (gitignored, do not delete)
 ```
 
