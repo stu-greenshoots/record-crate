@@ -3,22 +3,30 @@ import { useEffect, useState } from 'react'
 interface ToastItem {
   id: number
   text: string
-  undo?: () => void
+  action?: { label: string; run: () => void }
 }
 
 let push: ((t: ToastItem) => void) | null = null
+let early: ToastItem | null = null
 let seq = 0
 
-/** A short confirmation at the bottom of the screen, with an optional Undo. */
-export function toast(text: string, opts: { undo?: () => void } = {}) {
-  push?.({ id: ++seq, text, undo: opts.undo })
-  navigator.vibrate?.(12)
+/**
+ * A short note at the bottom of the screen, with an optional Undo or other action.
+ * It buzzes to confirm something you did; an action offered unprompted doesn't.
+ */
+export function toast(text: string, opts: { undo?: () => void; action?: ToastItem['action'] } = {}) {
+  const item = { id: ++seq, text, action: opts.action ?? (opts.undo && { label: 'Undo', run: opts.undo }) }
+  if (push) push(item)
+  else early = item
+  if (!opts.action) navigator.vibrate?.(12)
 }
 
 export function Toaster() {
   const [item, setItem] = useState<ToastItem | null>(null)
   useEffect(() => {
     push = setItem
+    if (early) setItem(early)
+    early = null
     return () => {
       push = null
     }
@@ -32,15 +40,15 @@ export function Toaster() {
   return (
     <div className="toast" role="status" key={item.id}>
       <span>{item.text}</span>
-      {item.undo && (
+      {item.action && (
         <button
           type="button"
           onClick={() => {
-            item.undo?.()
+            item.action?.run()
             setItem(null)
           }}
         >
-          Undo
+          {item.action.label}
         </button>
       )}
     </div>

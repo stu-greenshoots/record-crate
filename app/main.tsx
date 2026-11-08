@@ -4,6 +4,8 @@ import App from './App'
 import { getStore, load } from './store'
 import { warmUp } from './recognise'
 import { refresh } from './discogs'
+import { watchForUpdates } from './update'
+import { toast } from './components/Toast'
 // Self-hosted, so the type is there offline in front of the shelf.
 import '@fontsource-variable/fraunces/opsz.css'
 import '@fontsource-variable/fraunces/opsz-italic.css'
@@ -67,7 +69,12 @@ document.addEventListener('focusout', () => {
 window.visualViewport?.addEventListener('resize', keepFieldInView)
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
+  navigator.serviceWorker
+    .register(`${import.meta.env.BASE_URL}sw.js`)
+    .then((reg) =>
+      watchForUpdates(reg, (apply) => toast('A new version is ready', { action: { label: 'Reload', run: apply } })),
+    )
+    .catch(() => {})
 }
 
 /**
