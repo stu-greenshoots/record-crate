@@ -187,6 +187,14 @@ describe('the organise pass', () => {
     expect(getStore()!.local.sorted).toEqual({})
     expect(getStore()!.local.mapBase).toBe(SNAPSHOT.exportedAt)
   })
+
+  it("keeps the organise ticks when the layout didn't change", async () => {
+    const { toggleSorted, setMap, getStore } = await freshStore()
+    toggleSorted(0, 3)
+    setMap(structuredClone(MAP))
+    expect(getStore()!.local.sorted).toEqual({ 0: [3] })
+    expect(getStore()!.local.map).toBeNull()
+  })
 })
 
 describe('records added since the snapshot', () => {
