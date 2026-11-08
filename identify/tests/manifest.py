@@ -1,4 +1,4 @@
-"""Map each record to its locally cached cover, the way the image proxy stores them."""
+"""Map each record to its locally cached cover, the way scripts/sync.mjs stores them."""
 import hashlib, json, os, re, urllib.request
 
 def build(records_url='http://localhost:5177/api/records', out='/tmp/manifest.json'):

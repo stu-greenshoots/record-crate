@@ -13,7 +13,6 @@ export const enrichState = {
   releases: { done: 0, total: 0 },
   artists: { done: 0, total: 0 },
   masters: { done: 0, total: 0 },
-  market: { done: 0, total: 0, running: false },
   error: null,
 }
 
@@ -140,25 +139,6 @@ export async function fetchReleaseDetail(releaseId, { force = false } = {}) {
   return trimmed
 }
 
-export async function fetchMarket(releaseId, { force = false } = {}) {
-  const cached = store.getMarket(releaseId)
-  const DAY = 24 * 60 * 60 * 1000
-  if (!force && cached && Date.now() - cached.fetchedAt < DAY) return cached
-
-  const result = { fetchedAt: Date.now(), stats: null, suggestions: null }
-  try {
-    result.stats = await api(
-      `/marketplace/stats/${releaseId}?curr_abbr=${encodeURIComponent(config.currency)}`,
-      { priority: 0 },
-    )
-  } catch {}
-  try {
-    result.suggestions = await api(`/marketplace/price_suggestions/${releaseId}`, { priority: 0 })
-  } catch {}
-  store.putMarket(releaseId, result)
-  return result
-}
-
 let loopHandle = null
 
 async function loop() {
@@ -240,29 +220,4 @@ async function loop() {
 export function startEnrichment() {
   if (loopHandle || !store.auth || !store.collection.items.length) return
   loopHandle = loop()
-}
-
-/** Opt-in second pass that prices the whole collection for the value estimate. */
-export async function priceEverything() {
-  if (enrichState.market.running) return
-  enrichState.market.running = true
-  try {
-    const ids = [...new Set(store.collection.items.map((i) => i.releaseId))]
-    enrichState.market = { done: 0, total: ids.length, running: true }
-    for (const id of ids) {
-      const cached = store.getMarket(id)
-      if (!cached || Date.now() - cached.fetchedAt > 7 * 24 * 60 * 60 * 1000) {
-        try {
-          const stats = await api(
-            `/marketplace/stats/${id}?curr_abbr=${encodeURIComponent(config.currency)}`,
-          )
-          store.putMarket(id, { fetchedAt: Date.now(), stats, suggestions: null })
-        } catch {}
-      }
-      enrichState.market.done += 1
-    }
-  } finally {
-    enrichState.market.running = false
-    store.flush('market')
-  }
 }
