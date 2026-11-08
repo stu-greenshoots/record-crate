@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { bestAlbum } from '../shared/spotify.js'
 import { sides as sidesFrom } from '../shared/sides.js'
 import { withLengths } from '../shared/needle.js'
-import { loadPressing } from './components/Pressing'
+import { loadPressing } from './pressings'
 import type { Rec, Side } from './types'
 
 /**
