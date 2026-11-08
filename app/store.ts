@@ -261,12 +261,25 @@ export function deleteShelf(id: string) {
   })
 }
 
+/** Whether two plain JSON-like values match, ignoring key order and keys set to undefined. */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const keys = (o: object) => Object.keys(o).filter((k) => o[k as keyof typeof o] !== undefined)
+  const ka = keys(a)
+  return ka.length === keys(b).length && ka.every((k) => same(a[k as keyof typeof a], b[k as keyof typeof b]))
+}
+
 export function setMap(map: ShelfMapConfig | null) {
+  const current = local.map || snapshot?.shelfMap
+  const changed = !same(map || snapshot?.shelfMap, current)
+  if (map && !changed) return
   update((l) => {
     l.map = map
     l.mapBase = map ? snapshot?.exportedAt || null : null
     // Ticks were for the old cubes.
-    l.sorted = {}
+    if (changed) l.sorted = {}
   })
 }
 

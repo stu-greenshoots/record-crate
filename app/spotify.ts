@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { bestAlbum } from '../shared/spotify.js'
 import { sides as sidesFrom } from '../shared/sides.js'
 import { withLengths } from '../shared/needle.js'
-import { loadPressing } from './components/Pressing'
+import { loadPressing } from './pressings'
 import type { Rec, Side } from './types'
 
 /**
@@ -124,12 +124,23 @@ async function tokenCall(params: Record<string, string>) {
   return t
 }
 
-async function token(): Promise<string> {
+// Spotify may hand back a new refresh token and retire the old one, so only one
+// refresh can be in flight: the others wait for it rather than spend the old token.
+let refreshing: Promise<string> | null = null
+
+export async function token(): Promise<string> {
   const t = read<Token>(KEY)
   if (!t) throw new Error('Not connected to Spotify')
   if (Date.now() < t.until) return t.access
+  refreshing ||= refresh(t.refresh).finally(() => {
+    refreshing = null
+  })
+  return refreshing
+}
+
+async function refresh(refreshToken: string) {
   try {
-    return (await tokenCall({ grant_type: 'refresh_token', refresh_token: t.refresh })).access
+    return (await tokenCall({ grant_type: 'refresh_token', refresh_token: refreshToken })).access
   } catch (err) {
     // A refused refresh means signing in again; a network failure doesn't.
     if (navigator.onLine) disconnect()
