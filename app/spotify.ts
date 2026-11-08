@@ -8,7 +8,7 @@ import type { Rec, Side } from './types'
 /**
  * Playing the record: Spotify's Web Playback SDK makes this app a Spotify player (it
  * needs Premium), and the Web API tells it what to play and from where. Sign-in is
- * PKCE, so there's no secret and no server. Tested on the phone first (spike/play.html).
+ * PKCE, so there's no secret and no server.
  */
 const CLIENT_ID = 'f623fdf1f6f74f9fb142f097a4e61af1'
 // Spotify only returns to the address registered for the app: the front page.
