@@ -6,10 +6,11 @@ The project is now a **static phone web app** in `app/`, meant for GitHub Pages 
 `/record-crate/`. It covers only records Stu owns: find one (typing or camera), see
 where it goes, keep a put-back list, and sort the shelves cube by cube. The "not in
 my collection" / back-cover flow was deliberately dropped. The README describes the
-app; this file's older sections describe the desktop app in `server/` + `src/`,
-which is still how `data/` gets synced from Discogs.
+app; this file's older sections describe the desktop app that came before it. Its
+UI has since been removed. `server/` stays: it holds the Discogs sign-in that
+`npm run sync` relies on, and the photo-reading routes.
 
-- `npm run sync` refreshes `data/` from Discogs without the desktop UI;
+- `npm run sync` refreshes `data/` from Discogs;
   `npm run snapshot` turns `data/` into `public/` (collection, 360px covers,
   DINOv2 embeddings, model). `npm run dev` serves the app on :5178, and
   `app/phone.html` shows three iPhone-sized frames side by side (dev only).
@@ -31,7 +32,7 @@ prior context. The app is built and working; the open problem is at the bottom.
 ## Running it
 
 ```bash
-npm run dev        # http://localhost:5177 — no passcode locally
+npm run server     # http://localhost:5177 — connect Discogs, plus the photo routes
 npm test           # node --test runs test/*.test.mjs (filing, layout, catnos); vitest runs test/*.test.ts (the phone store)
 ```
 
@@ -40,16 +41,17 @@ live OAuth token and `data/` has his real 607-record collection fully enriched
 (sleeves, artists, master release years, some market prices). **Don't delete
 `data/`** — re-syncing costs ~25 minutes of rate-limited crawling.
 
-Two things exist for reaching it from a phone, both currently off:
-`ACCESS_CODE=<value> npm run dev` puts a passcode in front of everything, and
-`ngrok http 5177` exposes it. `vite.config.ts` already allowlists tunnel hosts,
-and Express runs with `trust proxy` so the OAuth callback resolves as https.
+If the token ever needs renewing, run `npm run server`, open the page and connect
+again. `ACCESS_CODE=<value> npm run server` puts a passcode in front of it, and
+Express runs with `trust proxy` so the OAuth callback resolves as https behind a
+tunnel (`ngrok http 5177`). Both are off normally.
 
-## What it does
+## What it did
 
-A local browser for a Discogs collection with four views: **Grid** (gallery),
-**Crate** (coverflow), **Shelf** (the physical unit), **Filing** (sort-name
-audit). Plus a "File a record" dialog that answers *where does this go?*
+The desktop app (now removed) was a local browser for a Discogs collection with
+four views: **Grid** (gallery), **Crate** (coverflow), **Shelf** (the physical
+unit), **Filing** (sort-name audit). Plus a "File a record" dialog that answered
+*where does this go?* The filing and layout below live on in `shared/`.
 
 Three pieces carry most of the value, and each cost real debugging:
 
@@ -66,12 +68,12 @@ out, from the Discogs **master release** — not the year of the pressing you ow
 Without this, Gong's Radio Gnome trilogy scattered because two of them are 1984
 reissues of 1973/74 albums.
 
-**The unit.** `server/shelfmap.js` maps the collection onto physical cubes
+**The unit.** `shared/shelfmap.js` maps the collection onto physical cubes
 (default 4 wide × 3 high). Lettered cubes are filled by a DP that minimises
 squared deviation from the average *shelf width* — not headcount, and not the
 usual minimax, which happily leaves one cube at 14 and another at 50. Records
 carry a `width` (LP-equivalents, from disc count / gatefold / 180-gram) and a
-`height` (7" stands short, box sets stand proud), both in `server/thickness.js`.
+`height` (7" stands short, box sets stand proud), both in `shared/thickness.js`.
 Letters stay whole unless one outgrows a cube.
 
 `server/place.js` answers "where does this go" for an owned record or any Discogs
@@ -79,13 +81,14 @@ release, returning the cube and the two records to slide between.
 
 ## Architecture notes
 
-Node + Express with Vite in middleware mode — one process, one port. **Vite only
-hot-reloads the client; any change under `server/` needs a restart.** JSON file
-store, atomic writes, no database. Discogs allows 60 req/min, so `discogs.js`
+Node + Express, one process; any change under `server/` needs a restart. JSON
+file store, atomic writes, no database. Discogs allows 60 req/min, so `discogs.js`
 runs a token bucket with a two-level queue (interactive work overtakes the
 background crawl). OAuth 1.0a uses PLAINTEXT signing — no signing library needed.
 
 ## Bugs already found and fixed (don't reintroduce)
+
+Some of these were in the desktop UI, but the lessons carry over to the phone.
 
 - Filing by `anv` instead of the canonical artist name — split 13 artists.
 - Sorting by pressing year instead of master year.
@@ -247,8 +250,8 @@ artwork. That is the next input needed, and it needs Stu holding a phone.
 `identify/backcover.py` — reads a photographed back cover and returns
 *candidates*, not answers: catalogue numbers ranked with a confidence, and the
 lines of largest type for a fallback text search. Reached from
-`POST /api/identify/back` (raw image bytes) via `server/identify.js`, and from
-the "Read the back" button in the File a record dialog. Measured across four
+`POST /api/identify/back` (raw image bytes) via `server/identify.js`; the "Read
+the back" button that called it went with the desktop UI. Measured across four
 photograph conditions in `identify/tests/README.md`.
 
 Three things in it are load-bearing and easy to undo by accident:
@@ -277,25 +280,26 @@ server/
   config.js     credentials + paths (reads the tab-separated .env as-is)
   discogs.js    OAuth 1.0a (PLAINTEXT) + rate-limited client
   store.js      JSON persistence, atomic writes
+  place.js      "where does this record go"
+  sync.js       collection pull
+  enrich.js     background crawl: sleeves, artists, master years
+  records.js    the record shape the export works from, plus sort modes
+  identify.js   spawns the Python reader; catalogue-number matching
+  routes.js     Discogs sign-in, the record list, photo reading, placement
+shared/
   classify.js   filing rules and shelf auto-sort
   thickness.js  how much shelf a record takes, and how tall it stands
   shelfmap.js   collection -> physical cubes (the balancing DP)
-  place.js      "where does this record go"
-  sync.js       collection pull
-  enrich.js     background crawl: sleeves, artists, master years, prices
-  records.js    the shape the UI renders, plus sort modes
-  identify.js   spawns the Python reader; catalogue-number matching
-  routes.js     HTTP API
 identify/
   covers.py     ORB + homography sleeve matching (a sleeve you already own)
   backcover.py  reads a photographed back cover -> catalogue number candidates
   text.py       finding the sleeve in the frame, plus the older front-sleeve OCR
   cli.py        JSON bridge for the Node server
-src/            React + TypeScript front end
+app/            the phone app (see the README)
 test/           npm test — .mjs files run under node --test, .ts files under vitest
 data/           his collection, shelves, cached art (gitignored, do not delete)
 ```
 
-Not a git repo. `npm test` covers filing, shelf layout and catalogue-number
-matching; the image work is measured by the scripts in `identify/tests/`
-(see the README there) rather than in the suite.
+`npm test` covers filing, shelf layout and catalogue-number matching; the image
+work is measured by the scripts in `identify/tests/` (see the README there)
+rather than in the suite.

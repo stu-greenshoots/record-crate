@@ -1,7 +1,5 @@
 import express from 'express'
-import fs from 'node:fs'
-import path from 'node:path'
-import { config, ROOT, assertCredentials } from './config.js'
+import { config, assertCredentials } from './config.js'
 import { router } from './routes.js'
 import { store } from './store.js'
 import { startEnrichment } from './enrich.js'
@@ -34,24 +32,21 @@ if (process.env.ACCESS_CODE) {
 app.use(express.json({ limit: '2mb' }))
 app.use('/api', router)
 
-if (config.isProd) {
-  const dist = path.join(ROOT, 'dist')
-  if (!fs.existsSync(dist)) {
-    console.error('No dist/ build found. Run `npm run build` first.')
-    process.exit(1)
-  }
-  app.use(express.static(dist))
-  app.get('*', (req, res) => res.sendFile(path.join(dist, 'index.html')))
-} else {
-  // Vite in middleware mode keeps the whole thing on one port with HMR intact.
-  const { createServer } = await import('vite')
-  const vite = await createServer({
-    root: ROOT,
-    server: { middlewareMode: true },
-    appType: 'spa',
-  })
-  app.use(vite.middlewares)
-}
+// The Discogs sign-in comes back here, and starts here.
+app.get('/', (req, res) => {
+  const outcome = {
+    ok: 'Connected.',
+    denied: 'Discogs said no.',
+    expired: 'That sign-in had expired. Try again.',
+  }[req.query.auth]
+  const status = store.auth
+    ? `Signed in to Discogs as ${store.auth.username}. Run <code>npm run sync</code> to refresh data/.`
+    : 'Not connected to Discogs.'
+  res.type('html').send(
+    `<!doctype html><title>Record Crate</title>${outcome ? `<p>${outcome}</p>` : ''}` +
+      `<p>${status}</p><p><a href="/api/auth/login">Connect Discogs</a></p>`,
+  )
+})
 
 try {
   assertCredentials()

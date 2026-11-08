@@ -24,7 +24,7 @@ const COVERS = path.join(OUT, 'covers')
 fs.mkdirSync(path.join(OUT, 'data'), { recursive: true })
 fs.mkdirSync(COVERS, { recursive: true })
 
-/** Where the image proxy cached a Discogs URL. Mirrors server/routes.js. */
+/** Where sync.mjs cached a Discogs URL. Mirrors its naming. */
 function cachedImage(url) {
   if (!url) return null
   const hash = crypto.createHash('sha1').update(url).digest('hex')

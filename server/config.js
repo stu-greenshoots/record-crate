@@ -57,7 +57,6 @@ export const config = {
   userAgent: 'RecordCrate/0.1 +https://github.com/local/record-crate',
   port: Number(process.env.PORT || 5177),
   currency: process.env.DISCOGS_CURRENCY || 'GBP',
-  isProd: process.env.NODE_ENV === 'production',
 }
 
 export function assertCredentials() {

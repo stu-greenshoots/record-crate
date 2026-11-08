@@ -39,7 +39,7 @@ await new Promise((resolve) => {
 console.log()
 if (enrichState.error) console.warn(`details stopped early: ${enrichState.error}`)
 
-// Same file naming as the server's image proxy, which export.mjs reads from.
+// Named by a hash of the URL, which is how export.mjs finds them.
 const IMG_DIR = path.join(DATA_DIR, 'images')
 fs.mkdirSync(IMG_DIR, { recursive: true })
 let fetched = 0

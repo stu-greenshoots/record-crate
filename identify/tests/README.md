@@ -4,7 +4,7 @@ Not part of `npm test` — these need the server running and the cover index bui
 and they take a few minutes.
 
 ```bash
-npm run dev &                                   # needs the collection + cached art
+npm run server &                                # needs the collection + cached art
 .venv/bin/python -m identify.tests.manifest     # map records -> cached covers
 .venv/bin/python -c "import identify.covers as c; \
   print(c.build_index('/tmp/manifest.json','data/cover-index.npz'))"
