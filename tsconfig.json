@@ -20,6 +20,7 @@
   "include": [
     "app",
     "shared",
+    "contract",
     "test/**/*.ts",
     "vitest.config.ts"
   ]
