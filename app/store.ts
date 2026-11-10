@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { buildShelfMap } from '../shared/shelfmap.js'
+import { EMPTY_LOCAL, fromBackup, toBackup } from '../shared/backup.js'
 import type { BuiltMap, Rec, Shelf, ShelfMapConfig, Snapshot, Spot } from './types'
 
 /**
@@ -30,25 +31,14 @@ export interface Local {
   gone: number[]
   /** Cube index -> ids confirmed in place, for the organise pass. */
   sorted: Record<string, number[]>
+  /** id -> the runout variant you've checked your copy against (0: the only one). */
+  runoutOf: Record<string, number>
   lastCheck: string | null
 }
 
 const KEY = 'record-crate:v1'
 
-const EMPTY: Local = {
-  version: 1,
-  out: {},
-  recent: [],
-  shelfOf: {},
-  sortOf: {},
-  shelves: null,
-  map: null,
-  mapBase: null,
-  fresh: [],
-  gone: [],
-  sorted: {},
-  lastCheck: null,
-}
+const EMPTY = EMPTY_LOCAL as Local
 
 function read(): Local {
   try {
@@ -153,7 +143,9 @@ let loadError: string | null = null
 
 export async function load() {
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`)
+    // GitHub Pages lets the browser reuse a copy for ten minutes; ask it to check, so
+    // the first open after a deploy gets the new snapshot.
+    const res = await fetch(`${import.meta.env.BASE_URL}data/collection.json`, { cache: 'no-cache' })
     if (!res.ok) throw new Error(`Couldn't load the collection (${res.status})`)
     snapshot = await res.json()
     loadError = null
@@ -287,6 +279,14 @@ export function toggleSorted(cube: number, id: number) {
   })
 }
 
+export function setRunout(id: number, variant: number | null) {
+  update((l) => {
+    l.runoutOf = { ...l.runoutOf }
+    if (variant == null) delete l.runoutOf[id]
+    else l.runoutOf[id] = variant
+  })
+}
+
 export function resetSorted(cube: number) {
   update((l) => {
     delete l.sorted[cube]
@@ -297,4 +297,16 @@ export function resetSorted(cube: number) {
 export function coverUrl(r: Rec) {
   if (r.cover) return `${import.meta.env.BASE_URL}${r.cover}`
   return r.remoteCover || ''
+}
+
+export function backupText() {
+  return toBackup(local, snapshot?.exportedAt || null)
+}
+
+/** Replaces everything saved on this phone with the backup; returns what it replaced. */
+export function restoreBackup(text: string) {
+  const restored = fromBackup(text).local as Local
+  const saved = local
+  update(() => restored)
+  return saved
 }

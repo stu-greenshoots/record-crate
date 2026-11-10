@@ -6,7 +6,7 @@ import { UnitMap } from './UnitMap'
 import { Sleeve } from './Sleeve'
 import { CheckIcon } from './Icons'
 import { toast } from './Toast'
-import { timeAgo } from './RecordView'
+import { timeAgo } from './RecordDetails'
 
 /**
  * Everything off the shelf, in the order you'd walk the unit to put it back: cube by

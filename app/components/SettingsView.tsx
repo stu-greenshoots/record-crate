@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { setMap, update, upsertShelf, useStore } from '../store'
+import { backupText, restoreBackup, setMap, update, upsertShelf, useStore } from '../store'
 import { back, go } from '../route'
 import { refresh, useCheckProgress } from '../discogs'
+import { connect, disconnect, useSpotify } from '../spotify'
 import type { ShelfMapConfig, SlotConfig, SplitMode } from '../types'
 import { BackIcon, ChevronIcon } from './Icons'
 import { UnitMap } from './UnitMap'
 import { toast } from './Toast'
-import { timeAgo } from './RecordView'
+import { timeAgo } from './RecordDetails'
 
 export function SettingsView() {
   const store = useStore()
@@ -228,12 +229,39 @@ export function SettingsView() {
         </p>
       </section>
 
+      <SpotifyPanel />
+
       <section className="panel">
         <h2 className="panel-title">This phone</h2>
         <p className="panel-sub">
           Snapshot of {snapshot.username}'s collection from {new Date(snapshot.exportedAt).toLocaleDateString()}.
-          What's out, cube ticks and layout changes are saved on this device.
+          What's out, cube ticks and layout changes are saved on this device, and only
+          here. Save a backup before clearing your browser or changing phones.
         </p>
+        <div className="backup-row">
+          <button type="button" className="link-btn" onClick={saveBackup}>
+            Save a backup
+          </button>
+          <label className="link-btn">
+            Restore a backup
+            <input
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (!file) return
+                try {
+                  const saved = restoreBackup(await file.text())
+                  toast('Backup restored', { undo: () => update(() => saved) })
+                } catch (err) {
+                  toast((err as Error).message)
+                }
+              }}
+            />
+          </label>
+        </div>
         <button
           type="button"
           className="link-btn danger"
@@ -357,4 +385,47 @@ function fitSlots(m: ShelfMapConfig) {
     slots.splice(last, 1)
   }
   m.slots = slots
+}
+
+/** Offers the share sheet where the phone has one (Drive, email, Slack), else downloads. */
+async function saveBackup() {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-')
+  const file = new File([backupText()], `record-crate-backup-${stamp}.json`, { type: 'application/json' })
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Record Crate backup' })
+      return
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return
+    }
+  }
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(file)
+  a.download = file.name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+/** Signing in once so the turntable can play: touch the grooves to drop the needle. */
+function SpotifyPanel() {
+  const spotify = useSpotify()
+  return (
+    <section className="panel">
+      <h2 className="panel-title">Spotify</h2>
+      <p className="panel-sub">
+        {spotify.connected
+          ? `Connected${spotify.name ? ` as ${spotify.name}` : ''}. Touch a record's grooves on the turntable to play it from there; tap the needle to lift it.`
+          : 'Connect your Spotify Premium account, and touching a record on the turntable plays it from that point.'}
+      </p>
+      {spotify.connected ? (
+        <button type="button" className="link-btn" onClick={disconnect}>
+          Disconnect Spotify
+        </button>
+      ) : (
+        <button type="button" className="btn btn-secondary" onClick={() => connect()}>
+          Connect Spotify
+        </button>
+      )}
+    </section>
+  )
 }

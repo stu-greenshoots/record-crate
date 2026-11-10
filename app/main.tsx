@@ -4,7 +4,13 @@ import App from './App'
 import { getStore, load } from './store'
 import { warmUp } from './recognise'
 import { refresh } from './discogs'
+// Self-hosted, so the type is there offline in front of the shelf.
+import '@fontsource-variable/fraunces/opsz.css'
+import '@fontsource-variable/fraunces/opsz-italic.css'
+import '@fontsource-variable/figtree/index.css'
 import './styles.css'
+// Finishes a Spotify sign-in on the way back, and gets the player ready to play.
+import './spotify'
 
 /**
  * Look for records added on Discogs a little after opening, at most every few

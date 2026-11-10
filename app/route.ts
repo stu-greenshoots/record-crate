@@ -12,6 +12,10 @@ import { useEffect, useState } from 'react'
  *   #/unit/4      one cube, in order
  *   #/settings
  *   #/shelf/metal  one shelf: its name and records
+ *   #/artist/10346 an artist's albums, yours and the rest (Discogs artist id)
+ *   #/mb/<mbid>    the same for someone with no page of their own (a band member)
+ *   #/stats
+ *   #/preview/<mbid>  an album you don't own on the turntable (MusicBrainz release group)
  */
 export type Route =
   | { name: 'find' }
@@ -22,6 +26,10 @@ export type Route =
   | { name: 'cube'; index: number }
   | { name: 'settings' }
   | { name: 'shelf'; id: string }
+  | { name: 'artist'; id: number }
+  | { name: 'mb'; id: string }
+  | { name: 'stats' }
+  | { name: 'preview'; id: string }
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, '').split('/')
@@ -38,6 +46,14 @@ export function parse(hash: string): Route {
       return { name: 'settings' }
     case 'shelf':
       return { name: 'shelf', id: decodeURIComponent(parts[1] || '') }
+    case 'artist':
+      return { name: 'artist', id: Number(parts[1]) }
+    case 'mb':
+      return { name: 'mb', id: decodeURIComponent(parts[1] || '') }
+    case 'stats':
+      return { name: 'stats' }
+    case 'preview':
+      return { name: 'preview', id: decodeURIComponent(parts[1] || '') }
     default:
       return { name: 'find' }
   }

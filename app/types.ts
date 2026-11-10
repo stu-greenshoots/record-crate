@@ -19,6 +19,28 @@ export interface Rec {
   cover: string | null
   remoteCover: string | null
   colour?: string | null
+  /** The centre label, cropped to its circle, where a photo of it was found. */
+  labelArt?: string | null
+  /** Its sides in playing order, each with its label photo where one was found. */
+  faces?: Face[]
+  /** The tracks, for a record that isn't in the snapshot (an album being previewed). */
+  sides?: Side[]
+  /** The record's size where it isn't a 12", e.g. 7 for a single. */
+  inches?: number
+  /** The label photo is really the whole record (a coloured or picture disc, say). */
+  labelDisc?: boolean
+  /** Who plays on, engineers or produces it: [index into Snapshot.people, kinds]. */
+  people?: [number, number][]
+  masterId?: number | null
+  artistId?: number | null
+  /** Where this pressing was made, and what the versions say about it. */
+  country?: string | null
+  press?: PressKind | null
+  have?: number | null
+  want?: number | null
+  /** Suggested price at VG+, in the snapshot's currency. */
+  value?: number | null
+  plant?: string | null
   /** Pulled in from Discogs after the snapshot was taken. */
   fresh?: boolean
 }
@@ -53,6 +75,10 @@ export interface Snapshot {
   username: string
   shelves: Shelf[]
   shelfMap: ShelfMapConfig
+  /** [name, roles], e.g. ["Steve Hillage", "guitar, producer"]. */
+  people?: [string, string][]
+  /** Discogs artist id -> [studio have, studio total, live have, live total]. */
+  completeness?: Record<string, [number, number, number, number]>
   records: Rec[]
 }
 
@@ -89,4 +115,62 @@ export interface Spot {
   index: number
   before: Rec | null
   after: Rec | null
+}
+
+export type PressKind = 'first' | 'same-year' | 'first-local' | 'first-vinyl' | 'reissue' | 'repress' | 'unofficial' | 'unknown'
+
+/** public/pressings/<releaseId>.json: everything known about one pressing. */
+export interface Track {
+  position: string
+  title: string
+  seconds: number | null
+}
+
+export interface Side {
+  side: string
+  tracks: Track[]
+}
+
+export interface Pressing {
+  /** What's on each side, in playing order (shared/sides.js). */
+  sides?: Side[]
+  verdict: {
+    kind: PressKind
+    text: string
+    detail?: string | null
+    firstYear: number | null
+    origin: string | null
+    promo: boolean
+    versions: number
+  } | null
+  versionCount: number | null
+  released: string | null
+  country: string | null
+  labels: { name: string; catno: string }[]
+  physical: string[]
+  cutters: string[]
+  runouts: { variant: number | null; sides: { value: string; side: string }[] }[]
+  notes: { text: string; href?: string }[]
+  have: number | null
+  want: number | null
+  rating: { count: number; average: number } | null
+  value: {
+    currency: string | null
+    mint: number | null
+    nearMint: number | null
+    vgPlus: number | null
+    vg: number | null
+    lowest: number | null
+    forSale: number | null
+  }
+  uri: string
+}
+
+export interface Face {
+  side: string
+  art?: string
+  /** The photo is of the whole record, not just its label. */
+  disc?: boolean
+  /** The other side's whole-record photo, shown round this side's label. */
+  under?: string
 }

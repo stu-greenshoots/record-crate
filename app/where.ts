@@ -6,8 +6,10 @@ import type { BuiltMap, Cube, Rec, Spot } from './types'
  * position 23" every time.
  */
 
-const ORD = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th']
-export const ordinal = (n: number) => ORD[n - 1] || `${n}th`
+export function ordinal(n: number) {
+  const teen = n % 100 >= 11 && n % 100 <= 13
+  return `${n}${teen ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`
+}
 
 export function rowName(row: number, rows: number) {
   if (rows === 1) return ''

@@ -10,20 +10,19 @@ import { CloseIcon, ImageIcon, TorchIcon } from './Icons'
 const SAMPLE = 320
 
 /**
- * When to trust the top match without asking, measured on 360 synthetic phone
- * photos of real sleeves plus 60 things that aren't sleeves (shelf backgrounds,
- * collages of other covers, plain card):
+ * When to trust the top match without asking. First measured on 360 synthetic phone
+ * photos of real sleeves plus 60 things that aren't sleeves, where no wrong sleeve led
+ * the runner-up by more than 0.067, so a 0.07 lead looked safe. On the real camera it
+ * still took the wrong record of yours, so the bars now sit above anything
+ * wrong seen in a rerun of 540 synthetic photos (worst wrong lead 0.093):
  *
- *  - no wrong sleeve ever led the runner-up by more than 0.067;
- *  - non-sleeves could lead by 0.10, but never scored above 0.67 outright;
- *  - so: score at least FLOOR and lead by SURE, or by STEADY on two frames running.
- *
- * That accepts 286 of 342 right answers on sight with no wrong ones; the rest are a
- * tap away in the shortlist.
+ *  - score at least FLOOR and lead by SURE, or by STEADY on two frames running;
+ *  - on that rerun, 318 of 487 right answers are accepted on sight (349 at the old
+ *    bars), none wrong; the rest are a tap away in the shortlist.
  */
-const FLOOR = 0.68
-const SURE = 0.07
-const STEADY = 0.06
+const FLOOR = 0.7
+const SURE = 0.1
+const STEADY = 0.09
 /** Below this the frame probably isn't one of your sleeves at all. */
 const STRANGER = 0.6
 

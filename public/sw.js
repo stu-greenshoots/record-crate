@@ -8,7 +8,7 @@
  *     shows up the first time the app opens after a deploy
  *   - the recognition index: served from cache, refreshed behind
  *   - the vector file: named by its content hash, so cache-first is safe
- *   - covers: served from cache, refreshed behind
+ *   - covers, labels and pressing notes: served from cache, refreshed behind
  *   - the model and the ONNX runtime: cache-first, in a cache named after their
  *     versions, so an upgrade fetches them again and nothing else does
  *
@@ -29,9 +29,9 @@ self.addEventListener('install', (event) => {
       const html = await res.clone().text()
       await cache.put('./', res)
       const assets = [...new Set(html.match(/assets\/[^"')\s]+/g) || [])]
+      await cache.add(new Request('data/collection.json', { cache: 'no-cache' }))
       await cache.addAll([
         ...assets,
-        'data/collection.json',
         'data/embeddings.json',
         'manifest.webmanifest',
         'icon.svg',
@@ -105,12 +105,8 @@ self.addEventListener('fetch', (event) => {
     }
     if (path.startsWith('data/')) return event.respondWith(staleWhileRevalidate(request, SHELL))
     if (/^(models|ort)\//.test(path)) return event.respondWith(cacheFirst(request, MODEL))
-    if (path.startsWith('covers/')) return event.respondWith(staleWhileRevalidate(request, COVERS))
+    if (/^(covers|labels|discs|pressings|artists)\//.test(path)) return event.respondWith(staleWhileRevalidate(request, COVERS))
     if (/\.(png|svg|webmanifest)$/.test(path)) return event.respondWith(staleWhileRevalidate(request, SHELL))
     return
-  }
-
-  if (/fonts\.(googleapis|gstatic)\.com/.test(url.hostname)) {
-    event.respondWith(staleWhileRevalidate(request, COVERS))
   }
 })

@@ -1,5 +1,5 @@
 import { classifyShelf, cleanArtistName, deriveSortName } from '../shared/classify.js'
-import { shelfHeight, shelfWidth } from '../shared/thickness.js'
+import { discInches, shelfHeight, shelfWidth } from '../shared/thickness.js'
 import { useSyncExternalStore } from 'react'
 import { getStore, update } from './store'
 import type { Rec } from './types'
@@ -115,20 +115,26 @@ async function run(onProgress: (p: CheckProgress) => void) {
   const filedAs = new Map<string, string>()
   for (const r of store.records) filedAs.set(cleanArtistName(r.artist).toLowerCase(), r.sortName)
 
+  const inSnapshot = new Set(store.snapshot.records.map((r) => r.id))
+  update((l) => {
+    l.fresh = l.fresh.filter((r) => live.has(r.id) && !inSnapshot.has(r.id))
+    l.gone = gone
+  })
+
+  // Each record is saved as soon as it's filed: a few hundred milliseconds of work
+  // waits seconds on the rate limit, and a check cut short (the phone locked, the
+  // app closed) should keep what it got. The next check carries on from there.
   const fresh: Rec[] = []
   for (const [n, item] of incoming.entries()) {
     onProgress({ stage: 'Filing new records', done: n, total: incoming.length })
-    fresh.push(await toRecord(item, filedAs))
+    const rec = await toRecord(item, filedAs)
+    fresh.push(rec)
+    update((l) => {
+      l.fresh = [...l.fresh.filter((r) => r.id !== rec.id), rec]
+    })
   }
 
   update((l) => {
-    const inSnapshot = new Set(store.snapshot.records.map((r) => r.id))
-    const byId = new Map<number, Rec>()
-    for (const r of [...l.fresh, ...fresh]) {
-      if (live.has(r.id) && !inSnapshot.has(r.id)) byId.set(r.id, r)
-    }
-    l.fresh = [...byId.values()]
-    l.gone = gone
     l.lastCheck = new Date().toISOString()
   })
   return { added: fresh, gone: gone.length }
@@ -179,6 +185,8 @@ async function toRecord(item: any, filedAs: Map<string, string>): Promise<Rec> {
   return {
     id: item.instance_id,
     releaseId: b.id,
+    masterId: b.master_id || null,
+    artistId: primary?.id && primary.id !== 194 ? primary.id : null,
     title: String(b.title || '').trim(),
     artist: name,
     credit: artists.map((a: any) => a.anv || a.name).join(', '),
@@ -188,6 +196,7 @@ async function toRecord(item: any, filedAs: Map<string, string>): Promise<Rec> {
     shelf: shelves.has(shelf) ? shelf : 'main',
     width: shelfWidth(info, null) as number,
     height: shelfHeight(info) as number,
+    inches: discInches(info) === 12 ? undefined : discInches(info),
     format: descs.find((d: string) => /^(LP|EP|\d+"|Single|Album|Compilation)$/i.test(d)) || b.formats?.[0]?.name || '',
     catno: b.labels?.[0]?.catno || '',
     label: b.labels?.[0]?.name || '',

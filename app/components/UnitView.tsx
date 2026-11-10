@@ -1,8 +1,11 @@
+import { useEffect, useRef, useState } from 'react'
 import { resetSorted, toggleSorted, useStore } from '../store'
+import { unitFilter, useMatches } from '../filter'
+import { FilterBar } from './FilterBar'
 import { back, go } from '../route'
-import { cubePlace, yearOf } from '../where'
+import { cubePlace, ordinal, yearOf } from '../where'
 import { UnitMap } from './UnitMap'
-import { CubeStrip } from './RecordView'
+import { CubeStrip } from './RecordDetails'
 import { BackIcon, CheckIcon, ChevronIcon, GearIcon } from './Icons'
 import { Sleeve } from './Sleeve'
 
@@ -10,7 +13,15 @@ import { Sleeve } from './Sleeve'
 export function UnitView() {
   const store = useStore()
   if (!store) return null
+  return <Unit store={store} />
+}
+
+function Unit({ store }: { store: NonNullable<ReturnType<typeof useStore>> }) {
   const { built, byId } = store
+  const filter = unitFilter.use(store.snapshot.exportedAt)
+  const { matched, pool } = useMatches(store.records, filter)
+  const hits = (ids: number[]) => (matched ? ids.filter((id) => matched.has(id)).length : 0)
+  const badges = matched ? Object.fromEntries(built.slots.map((c) => [c.index, hits(c.instanceIds)])) : {}
   const outIds = new Set(store.out.map((r) => r.id))
   const sortedCubes = built.slots.filter(
     (c) => c.count && (store.local.sorted[c.index] || []).filter((id) => c.instanceIds.includes(id)).length >= c.count,
@@ -29,29 +40,85 @@ export function UnitView() {
         {built.unplaced.length ? ` · ${built.unplaced.length} with nowhere to go` : ''}
       </p>
 
-      <UnitMap built={built} byId={byId} spines marked={outIds} onCube={(i) => go(`unit/${i}`)} />
+      <FilterBar store={store} filter={filter} onChange={(f) => unitFilter.set(f, store.snapshot.exportedAt)} matched={matched} pool={pool} />
 
-      <h3 className="section-title">Cubes</h3>
-      <ul className="cube-list">
-        {built.slots.map((c) => {
-          const done = (store.local.sorted[c.index] || []).filter((id) => c.instanceIds.includes(id)).length
-          return (
-            <li key={c.index}>
-              <button type="button" className="cube-row" onClick={() => go(`unit/${c.index}`)}>
-                <span className="cube-row-label">{c.label}</span>
-                <span className="cube-row-place">{cubePlace(c, built)}</span>
-                <span className={`cube-row-count ${c.over ? 'over' : ''}`}>
-                  {done > 0 && done < c.count ? `${done}/` : ''}
-                  {c.count}
-                  {done >= c.count && c.count > 0 && <CheckIcon />}
-                </span>
-                <ChevronIcon />
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-      {sortedCubes > 0 && (
+      <UnitMap
+        built={built}
+        byId={byId}
+        spines
+        marked={outIds}
+        matched={matched}
+        badges={badges}
+        onCube={(i) => go(`unit/${i}`)}
+      />
+
+      {matched ? (
+        <>
+          <h3 className="section-title">Where they are</h3>
+          {built.slots.map((c) => {
+            if (!badges[c.index]) return null
+            return (
+              <section key={c.index} className="match-group">
+                <button type="button" className="cube-row" onClick={() => go(`unit/${c.index}`)}>
+                  <span className="cube-row-label">{c.label}</span>
+                  <span className="cube-row-place">{cubePlace(c, built)}</span>
+                  <span className="cube-row-count">
+                    <b>{badges[c.index]}</b>&nbsp;of {c.count}
+                  </span>
+                  <ChevronIcon />
+                </button>
+                <ul className="results">
+                  {c.instanceIds.map((id, i) => {
+                    const r = matched.has(id) ? byId.get(id) : null
+                    if (!r) return null
+                    return (
+                      <li key={id}>
+                        <button type="button" className="result" onClick={() => go(`r/${id}`)}>
+                          <Sleeve rec={r} className="result-sleeve" />
+                          <span className="result-text">
+                            <span className="result-title">{r.title}</span>
+                            <span className="result-artist">
+                              {r.artist}
+                              {yearOf(r) ? ` · ${yearOf(r)}` : ''}
+                            </span>
+                          </span>
+                          <span className={`cube-chip ${outIds.has(id) ? 'out' : ''}`}>
+                            {outIds.has(id) ? 'Out' : `${ordinal(i + 1)} in`}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )
+          })}
+        </>
+      ) : (
+        <>
+          <h3 className="section-title">Cubes</h3>
+          <ul className="cube-list">
+            {built.slots.map((c) => {
+              const done = (store.local.sorted[c.index] || []).filter((id) => c.instanceIds.includes(id)).length
+              return (
+                <li key={c.index}>
+                  <button type="button" className="cube-row" onClick={() => go(`unit/${c.index}`)}>
+                    <span className="cube-row-label">{c.label}</span>
+                    <span className="cube-row-place">{cubePlace(c, built)}</span>
+                    <span className={`cube-row-count ${c.over ? 'over' : ''}`}>
+                      {done > 0 && done < c.count ? `${done}/` : ''}
+                      {c.count}
+                      {done >= c.count && c.count > 0 && <CheckIcon />}
+                    </span>
+                    <ChevronIcon />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+      {!matched && sortedCubes > 0 && (
         <p className="hint-note">
           {sortedCubes} of {built.slots.length} cubes checked in order.
         </p>
@@ -67,7 +134,18 @@ export function UnitView() {
 export function CubeView({ index }: { index: number }) {
   const store = useStore()
   if (!store) return null
+  return <CubePage store={store} index={index} />
+}
+
+function CubePage({ store, index }: { store: NonNullable<ReturnType<typeof useStore>>; index: number }) {
   const { built, byId } = store
+  const { matched } = useMatches(store.records, unitFilter.use(store.snapshot.exportedAt))
+  const [only, setOnly] = useState(false)
+  const firstMatch = useRef<HTMLLIElement>(null)
+  // Arriving from a filtered unit: take you to the first match in the list.
+  useEffect(() => {
+    firstMatch.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [index])
   const cube = built.slots[index]
   if (!cube) {
     return (
@@ -84,6 +162,8 @@ export function CubeView({ index }: { index: number }) {
   const sorted = new Set(store.local.sorted[index] || [])
   const done = cube.instanceIds.filter((id) => sorted.has(id)).length
   const outIds = new Set(store.out.map((r) => r.id))
+  const hits = matched ? cube.instanceIds.filter((id) => matched.has(id)).length : 0
+  const firstHit = matched ? cube.instanceIds.find((id) => matched.has(id)) : undefined
   const prev = built.slots[index - 1]
   const next = built.slots[index + 1]
 
@@ -116,8 +196,21 @@ export function CubeView({ index }: { index: number }) {
 
       <UnitMap built={built} byId={byId} highlight={[index]} compact onCube={(i) => go(`unit/${i}`, true)} />
       <div className="cube-zoom">
-        <CubeStrip cubeIds={cube.instanceIds} byId={byId} capacity={built.capacity} marked={outIds} />
+        <CubeStrip cubeIds={cube.instanceIds} byId={byId} capacity={built.capacity} marked={outIds} matched={matched} />
       </div>
+
+      {matched && (
+        <div className="cube-matches">
+          <p>
+            {hits ? `${hits} of ${cube.count} match your filter` : 'Nothing here matches your filter'}
+          </p>
+          {hits > 0 && (
+            <button type="button" className={`chip ${only ? 'on' : ''}`} aria-pressed={only} onClick={() => setOnly(!only)}>
+              Matches only
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="sort-head">
         <div>
@@ -145,8 +238,14 @@ export function CubeView({ index }: { index: number }) {
           const r = byId.get(id)
           if (!r) return null
           const on = sorted.has(id)
+          const hit = matched?.has(id)
+          if (only && !hit) return null
           return (
-            <li key={id} className={`order-item ${on ? 'on' : ''}`}>
+            <li
+              key={id}
+              ref={hit && id === firstHit ? firstMatch : undefined}
+              className={`order-item ${on ? 'on' : ''} ${hit ? 'match' : matched ? 'unmatched' : ''}`}
+            >
               <span className="order-n">{i + 1}</span>
               <button type="button" className="order-main" onClick={() => go(`r/${id}`)}>
                 <Sleeve rec={r} className="order-sleeve" />

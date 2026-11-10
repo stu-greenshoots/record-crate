@@ -14,6 +14,8 @@ interface Props {
   badges?: Record<number, number>
   /** Records to mark among the spines (out of the shelf). */
   marked?: Set<number>
+  /** Records a filter lets through: they glow, everything else dims. */
+  matched?: Set<number> | null
   onCube?: (index: number) => void
   compact?: boolean
 }
@@ -31,6 +33,7 @@ export const UnitMap = memo(function UnitMap({
   focus,
   badges = {},
   marked,
+  matched,
   onCube,
   compact = false,
 }: Props) {
@@ -38,17 +41,18 @@ export const UnitMap = memo(function UnitMap({
   const dimOthers = lit.size > 0
   return (
     <div
-      className={`unit ${compact ? 'compact' : ''} ${spines ? 'with-spines' : ''}`}
+      className={`unit ${compact ? 'compact' : ''} ${spines ? 'with-spines' : ''} ${matched ? 'filtering' : ''}`}
       style={{ gridTemplateColumns: `repeat(${built.cols}, 1fr)` }}
     >
       {built.slots.map((cube) => {
         const on = lit.has(cube.index)
         const badge = badges[cube.index]
+        const none = matched && !cube.instanceIds.some((id) => matched.has(id))
         return (
           <button
             key={cube.index}
             type="button"
-            className={`cube ${on ? 'lit' : ''} ${dimOthers && !on ? 'dim' : ''} ${cube.over ? 'over' : ''}`}
+            className={`cube ${on ? 'lit' : ''} ${(dimOthers && !on) || none ? 'dim' : ''} ${cube.over ? 'over' : ''}`}
             onClick={onCube ? () => onCube(cube.index) : undefined}
             tabIndex={onCube ? 0 : -1}
             aria-label={`${cube.label}, ${cube.count} records`}
@@ -62,7 +66,7 @@ export const UnitMap = memo(function UnitMap({
                   return (
                     <i
                       key={id}
-                      className={`${isFocus ? 'focus' : ''} ${marked?.has(id) ? 'marked' : ''}`}
+                      className={`${isFocus ? 'focus' : ''} ${marked?.has(id) ? 'marked' : ''} ${matched?.has(id) ? 'match' : ''}`}
                       style={{
                         width: `${(r.width / built.capacity) * 100}%`,
                         height: `${Math.min(1, r.height) * 100}%`,
